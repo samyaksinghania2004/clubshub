@@ -119,9 +119,20 @@ LOGOUT_REDIRECT_URL = "accounts:login"
 
 EMAIL_BACKEND = os.getenv(
     "CLUBSHUB_EMAIL_BACKEND",
-    "django.core.mail.backends.console.EmailBackend",
+    "django.core.mail.backends.smtp.EmailBackend",
 )
-DEFAULT_FROM_EMAIL = os.getenv("CLUBSHUB_DEFAULT_FROM_EMAIL", "noreply@iitk.ac.in")
+EMAIL_HOST = os.getenv("CLUBSHUB_EMAIL_HOST", "smtp.gmail.com")
+EMAIL_PORT = int(os.getenv("CLUBSHUB_EMAIL_PORT", "587"))
+EMAIL_HOST_USER = os.getenv("CLUBSHUB_EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.getenv("CLUBSHUB_EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = env_bool("CLUBSHUB_EMAIL_USE_TLS", True)
+EMAIL_USE_SSL = env_bool("CLUBSHUB_EMAIL_USE_SSL", False)
+EMAIL_TIMEOUT = int(os.getenv("CLUBSHUB_EMAIL_TIMEOUT", "20"))
+DEFAULT_FROM_EMAIL = os.getenv(
+    "CLUBSHUB_DEFAULT_FROM_EMAIL",
+    EMAIL_HOST_USER or "noreply@iitk.ac.in",
+)
+SERVER_EMAIL = os.getenv("CLUBSHUB_SERVER_EMAIL", DEFAULT_FROM_EMAIL)
 
 MESSAGE_STORAGE = "django.contrib.messages.storage.session.SessionStorage"
 
