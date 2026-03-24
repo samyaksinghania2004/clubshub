@@ -21,6 +21,12 @@ class User(AbstractUser):
         default=False,
         help_text="Prevents the user from joining rooms and registering for events.",
     )
+    email_verified = models.BooleanField(
+        default=True,
+        help_text="Existing users remain verified; new signups start unverified.",
+    )
+    email_verified_at = models.DateTimeField(blank=True, null=True)
+    signup_reported_at = models.DateTimeField(blank=True, null=True)
 
     def clean(self) -> None:
         super().clean()

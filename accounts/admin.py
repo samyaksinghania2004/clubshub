@@ -12,7 +12,13 @@ class UserAdmin(DjangoUserAdmin):
         (
             "ClubsHub",
             {
-                "fields": ("role", "is_globally_banned"),
+                "fields": (
+                    "role",
+                    "is_globally_banned",
+                    "email_verified",
+                    "email_verified_at",
+                    "signup_reported_at",
+                ),
             },
         ),
     )
@@ -20,7 +26,12 @@ class UserAdmin(DjangoUserAdmin):
         (
             "ClubsHub",
             {
-                "fields": ("email", "role", "is_globally_banned"),
+                "fields": (
+                    "email",
+                    "role",
+                    "is_globally_banned",
+                    "email_verified",
+                ),
             },
         ),
     )
@@ -30,10 +41,17 @@ class UserAdmin(DjangoUserAdmin):
         "first_name",
         "last_name",
         "role",
+        "email_verified",
         "is_staff",
         "is_globally_banned",
     )
-    list_filter = ("role", "is_staff", "is_superuser", "is_globally_banned")
+    list_filter = (
+        "role",
+        "email_verified",
+        "is_staff",
+        "is_superuser",
+        "is_globally_banned",
+    )
     search_fields = ("username", "email", "first_name", "last_name")
 
 

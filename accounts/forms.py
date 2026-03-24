@@ -46,6 +46,9 @@ class SignUpForm(UserCreationForm):
         user = super().save(commit=False)
         user.email = self.cleaned_data["email"].lower()
         user.role = User.Role.STUDENT
+        user.email_verified = False
+        user.email_verified_at = None
+        user.signup_reported_at = None
         if commit:
             user.save()
         return user
@@ -91,6 +94,10 @@ class EmailOrUsernameAuthenticationForm(forms.Form):
                 )
             if not self.user_cache.is_active:
                 raise ValidationError("This account is inactive.")
+            if not getattr(self.user_cache, "email_verified", True):
+                raise ValidationError(
+                    "Please verify your email address before logging in."
+                )
         return cleaned_data
 
     def get_user(self):
@@ -138,6 +145,25 @@ class EmailOTPVerifyForm(forms.Form):
                 "placeholder": "123456",
                 "inputmode": "numeric",
                 "autocomplete": "one-time-code",
+            }
+        ),
+    )
+
+    def clean_email(self):
+        email = self.cleaned_data["email"].strip().lower()
+        if not email.endswith("@iitk.ac.in"):
+            raise ValidationError("Please enter a valid IITK email address.")
+        return email
+
+
+class ResendVerificationForm(forms.Form):
+    email = forms.EmailField(
+        label="IITK email",
+        widget=forms.EmailInput(
+            attrs={
+                "class": INPUT_CLASS,
+                "placeholder": "name@iitk.ac.in",
+                "autocomplete": "email",
             }
         ),
     )

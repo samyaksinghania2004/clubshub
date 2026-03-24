@@ -17,9 +17,15 @@ from .forms import (
     EmailOTPRequestForm,
     EmailOTPVerifyForm,
     EmailOrUsernameAuthenticationForm,
+    ResendVerificationForm,
     SignUpForm,
 )
 from .models import EmailOTPChallenge
+from .utils import (
+    env_int,
+    send_signup_verification_email,
+    read_signed_user_token,
+)
 
 User = get_user_model()
 
@@ -36,7 +42,7 @@ def _generate_otp_code():
 
 
 def _send_login_otp_email(user, code, request):
-    expiry_seconds = getattr(settings, "CLUBSHUB_OTP_EXPIRY_SECONDS", 300)
+    expiry_seconds = env_int("CLUBSHUB_OTP_EXPIRY_SECONDS", 300)
     expiry_minutes = max(expiry_seconds // 60, 1)
     verify_url = request.build_absolute_uri(reverse("accounts:otp_verify"))
 
@@ -65,13 +71,131 @@ def signup_view(request):
         form = SignUpForm(request.POST)
         if form.is_valid():
             user = form.save()
-            login(request, user)
-            messages.success(request, "Account created successfully.")
-            return redirect("clubs_events:event_feed")
+            send_signup_verification_email(user, request)
+            params = urlencode({"email": user.email})
+            return redirect(f"{reverse('accounts:signup_pending')}?{params}")
     else:
         form = SignUpForm()
 
     return render(request, "accounts/signup.html", {"form": form})
+
+
+def signup_pending_view(request):
+    if request.user.is_authenticated:
+        return redirect("clubs_events:event_feed")
+
+    return render(
+        request,
+        "accounts/signup_pending.html",
+        {"email": request.GET.get("email", "")},
+    )
+
+
+def verify_email_view(request, token):
+    max_age = env_int("CLUBSHUB_EMAIL_VERIFICATION_MAX_AGE_SECONDS", 86400)
+    success = False
+    already_verified = False
+    message = "This verification link is invalid or has expired."
+
+    try:
+        payload = read_signed_user_token(token, "verify-email", max_age=max_age)
+        user = User.objects.filter(
+            pk=payload["user_id"],
+            email__iexact=payload["email"],
+        ).first()
+
+        if user is None:
+            message = "This verification link is invalid or has expired."
+        elif user.signup_reported_at or not user.is_active:
+            message = "This signup has already been reported and deactivated."
+        elif user.email_verified:
+            success = True
+            already_verified = True
+            message = "Your email address is already verified. You can log in."
+        else:
+            user.email_verified = True
+            user.email_verified_at = timezone.now()
+            user.is_active = True
+            user.save(update_fields=["email_verified", "email_verified_at", "is_active"])
+            success = True
+            message = "Your email has been verified successfully. You can now log in."
+    except Exception:
+        message = "This verification link is invalid or has expired."
+
+    return render(
+        request,
+        "accounts/email_verification_result.html",
+        {
+            "success": success,
+            "already_verified": already_verified,
+            "message": message,
+        },
+    )
+
+
+def report_signup_view(request, token):
+    max_age = env_int("CLUBSHUB_SIGNUP_REPORT_MAX_AGE_SECONDS", 86400)
+    success = False
+    message = "This reporting link is invalid or has expired."
+
+    try:
+        payload = read_signed_user_token(token, "report-signup", max_age=max_age)
+        user = User.objects.filter(
+            pk=payload["user_id"],
+            email__iexact=payload["email"],
+        ).first()
+
+        if user is None:
+            message = "This reporting link is invalid or has expired."
+        elif user.signup_reported_at:
+            success = True
+            message = "This signup has already been reported and deactivated."
+        else:
+            user.signup_reported_at = timezone.now()
+            user.is_active = False
+            user.email_verified = False
+            user.save(update_fields=["signup_reported_at", "is_active", "email_verified"])
+            success = True
+            message = "The signup has been reported and the account has been deactivated."
+    except Exception:
+        message = "This reporting link is invalid or has expired."
+
+    return render(
+        request,
+        "accounts/signup_report_result.html",
+        {
+            "success": success,
+            "message": message,
+        },
+    )
+
+
+def resend_verification_view(request):
+    if request.user.is_authenticated:
+        return redirect("clubs_events:event_feed")
+
+    if request.method == "POST":
+        form = ResendVerificationForm(request.POST)
+        if form.is_valid():
+            email = form.cleaned_data["email"]
+            user = User.objects.filter(
+                email__iexact=email,
+                is_active=True,
+                email_verified=False,
+                signup_reported_at__isnull=True,
+            ).first()
+            if user:
+                send_signup_verification_email(user, request)
+
+            messages.success(
+                request,
+                "If an eligible account exists, we have sent a fresh verification email.",
+            )
+            return redirect("accounts:login")
+    else:
+        form = ResendVerificationForm(initial={"email": request.GET.get("email", "")})
+
+    return render(request, "accounts/resend_verification.html", {"form": form})
 
 
 def login_view(request):
@@ -117,7 +241,11 @@ def request_login_otp_view(request):
 
     if form.is_valid():
         email = form.cleaned_data["email"]
-        user = User.objects.filter(email__iexact=email, is_active=True).first()
+        user = User.objects.filter(
+            email__iexact=email,
+            is_active=True,
+            email_verified=True,
+        ).first()
 
         if user:
             latest = (
@@ -130,10 +258,8 @@ def request_login_otp_view(request):
             )
 
             now = timezone.now()
-            cooldown_seconds = getattr(
-                settings, "CLUBSHUB_OTP_RESEND_COOLDOWN_SECONDS", 60
-            )
-            otp_expiry_seconds = getattr(settings, "CLUBSHUB_OTP_EXPIRY_SECONDS", 300)
+            cooldown_seconds = env_int("CLUBSHUB_OTP_RESEND_COOLDOWN_SECONDS", 60)
+            otp_expiry_seconds = env_int("CLUBSHUB_OTP_EXPIRY_SECONDS", 300)
 
             can_send = True
             if (
@@ -199,7 +325,11 @@ def otp_verify_view(request):
             email = form.cleaned_data["email"]
             code = form.cleaned_data["code"]
 
-            user = User.objects.filter(email__iexact=email, is_active=True).first()
+            user = User.objects.filter(
+                email__iexact=email,
+                is_active=True,
+                email_verified=True,
+            ).first()
             challenge = None
             if user:
                 challenge = (
@@ -212,7 +342,7 @@ def otp_verify_view(request):
                     .first()
                 )
 
-            max_attempts = getattr(settings, "CLUBSHUB_OTP_MAX_ATTEMPTS", 5)
+            max_attempts = env_int("CLUBSHUB_OTP_MAX_ATTEMPTS", 5)
 
             if not user or not challenge:
                 messages.error(request, "Invalid or expired code. Please request a new one.")

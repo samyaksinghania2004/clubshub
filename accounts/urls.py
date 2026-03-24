@@ -7,6 +7,14 @@ app_name = "accounts"
 
 urlpatterns = [
     path("signup/", views.signup_view, name="signup"),
+    path("signup/pending/", views.signup_pending_view, name="signup_pending"),
+    path("verify-email/<str:token>/", views.verify_email_view, name="verify_email"),
+    path("report-signup/<str:token>/", views.report_signup_view, name="report_signup"),
+    path(
+        "resend-verification/",
+        views.resend_verification_view,
+        name="resend_verification",
+    ),
     path("login/", views.login_view, name="login"),
     path("login/otp/request/", views.request_login_otp_view, name="request_login_otp"),
     path("login/otp/verify/", views.otp_verify_view, name="otp_verify"),

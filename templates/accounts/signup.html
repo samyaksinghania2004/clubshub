@@ -1,28 +1,50 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
+
 {% block title %}Sign up · ClubsHub{% endblock %}
+
 {% block content %}
-<div class="columns is-centered">
-    <div class="column is-two-thirds">
-        <div class="box">
-            <h1 class="title">Create your ClubsHub account</h1>
-            <p class="subtitle">Only IITK email addresses are accepted. New sign-ups start as Students.</p>
-            <form method="post">
-                {% csrf_token %}
-                {{ form.non_field_errors }}
-                <div class="columns is-multiline">
-                    {% for field in form %}
-                        <div class="column is-half">
-                            <div class="field">
-                                <label class="label">{{ field.label }}</label>
-                                <div class="control">{{ field }}</div>
-                                {% for error in field.errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
-                            </div>
-                        </div>
-                    {% endfor %}
-                </div>
-                <button class="button is-primary" type="submit">Create account</button>
-            </form>
+<section class="section">
+  <div class="container" style="max-width: 720px;">
+    <h1 class="title">Create your ClubsHub account</h1>
+    <p class="subtitle is-6">
+      Only IITK email addresses are accepted. New signups start as Students and must verify their email before logging in.
+    </p>
+
+    <div class="box">
+      <form method="post">
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+          <div class="notification is-danger is-light">
+            {{ form.non_field_errors }}
+          </div>
+        {% endif %}
+
+        {% for field in form %}
+          <div class="field">
+            <label class="label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+            <div class="control">
+              {{ field }}
+            </div>
+            {% for error in field.errors %}
+              <p class="help is-danger">{{ error }}</p>
+            {% endfor %}
+          </div>
+        {% endfor %}
+
+        <div class="field">
+          <div class="control">
+            <button class="button is-link is-fullwidth" type="submit">
+              Create account
+            </button>
+          </div>
         </div>
+      </form>
     </div>
-</div>
+
+    <p class="has-text-centered">
+      Already have an account? <a href="{% url 'accounts:login' %}">Log in</a>.
+    </p>
+  </div>
+</section>
 {% endblock %}
