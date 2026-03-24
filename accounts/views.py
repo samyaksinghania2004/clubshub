@@ -228,7 +228,7 @@ def otp_verify_view(request):
                 )
             elif challenge.check_code(code):
                 challenge.mark_consumed()
-                login(request, user)
+                login(request, user, backend="accounts.backends.EmailOrUsernameModelBackend")
                 messages.success(request, f"Welcome back, {user.display_name}!")
                 return redirect(next_url or "clubs_events:event_feed")
             else:
