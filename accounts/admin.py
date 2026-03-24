@@ -3,7 +3,7 @@ from __future__ import annotations
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 
-from .models import User
+from .models import EmailOTPChallenge, User
 
 
 @admin.register(User)
@@ -35,3 +35,28 @@ class UserAdmin(DjangoUserAdmin):
     )
     list_filter = ("role", "is_staff", "is_superuser", "is_globally_banned")
     search_fields = ("username", "email", "first_name", "last_name")
+
+
+@admin.register(EmailOTPChallenge)
+class EmailOTPChallengeAdmin(admin.ModelAdmin):
+    list_display = (
+        "email",
+        "purpose",
+        "user",
+        "created_at",
+        "expires_at",
+        "consumed_at",
+        "failed_attempts",
+    )
+    list_filter = ("purpose", "created_at", "expires_at", "consumed_at")
+    search_fields = ("email", "user__username", "user__email")
+    readonly_fields = (
+        "user",
+        "email",
+        "purpose",
+        "code_hash",
+        "created_at",
+        "last_sent_at",
+        "request_ip",
+        "user_agent",
+    )

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from django.contrib.auth.hashers import check_password, make_password
 from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils import timezone
 
 
 class User(AbstractUser):
@@ -37,3 +39,63 @@ class User(AbstractUser):
 
     def __str__(self) -> str:
         return f"{self.display_name} ({self.get_role_display()})"
+
+
+class EmailOTPChallenge(models.Model):
+    class Purpose(models.TextChoices):
+        LOGIN = "login", "Login"
+
+    user = models.ForeignKey(
+        "accounts.User",
+        on_delete=models.CASCADE,
+        related_name="email_otp_challenges",
+    )
+    email = models.EmailField(db_index=True)
+    purpose = models.CharField(
+        max_length=32,
+        choices=Purpose.choices,
+        default=Purpose.LOGIN,
+    )
+    code_hash = models.CharField(max_length=128)
+    expires_at = models.DateTimeField()
+    consumed_at = models.DateTimeField(blank=True, null=True)
+    failed_attempts = models.PositiveSmallIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_sent_at = models.DateTimeField(default=timezone.now)
+    request_ip = models.GenericIPAddressField(blank=True, null=True)
+    user_agent = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+        indexes = [
+            models.Index(fields=["email", "purpose", "created_at"]),
+        ]
+
+    def save(self, *args, **kwargs):
+        if self.email:
+            self.email = self.email.lower()
+        return super().save(*args, **kwargs)
+
+    def set_code(self, code: str) -> None:
+        self.code_hash = make_password(code)
+
+    def check_code(self, code: str) -> bool:
+        return check_password(code, self.code_hash)
+
+    @property
+    def is_expired(self) -> bool:
+        return timezone.now() >= self.expires_at
+
+    @property
+    def is_consumed(self) -> bool:
+        return self.consumed_at is not None
+
+    def is_usable(self) -> bool:
+        return not self.is_consumed and not self.is_expired
+
+    def mark_consumed(self) -> None:
+        self.consumed_at = timezone.now()
+        self.save(update_fields=["consumed_at"])
+
+    def __str__(self) -> str:
+        return f"{self.email} / {self.purpose} / {self.created_at:%Y-%m-%d %H:%M:%S}"

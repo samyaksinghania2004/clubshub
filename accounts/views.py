@@ -1,11 +1,60 @@
 from __future__ import annotations
 
-from django.contrib import messages
-from django.contrib.auth import login, logout
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import redirect, render
+from datetime import timedelta
+from random import SystemRandom
+from urllib.parse import urlencode
 
-from .forms import EmailOrUsernameAuthenticationForm, SignUpForm
+from django.conf import settings
+from django.contrib import messages
+from django.contrib.auth import get_user_model, login, logout
+from django.contrib.auth.decorators import login_required
+from django.core.mail import send_mail
+from django.shortcuts import redirect, render
+from django.urls import reverse
+from django.utils import timezone
+
+from .forms import (
+    EmailOTPRequestForm,
+    EmailOTPVerifyForm,
+    EmailOrUsernameAuthenticationForm,
+    SignUpForm,
+)
+from .models import EmailOTPChallenge
+
+User = get_user_model()
+
+
+def _client_ip(request):
+    forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
+    if forwarded_for:
+        return forwarded_for.split(",")[0].strip()
+    return request.META.get("REMOTE_ADDR")
+
+
+def _generate_otp_code():
+    return f"{SystemRandom().randrange(0, 1000000):06d}"
+
+
+def _send_login_otp_email(user, code, request):
+    expiry_seconds = getattr(settings, "CLUBSHUB_OTP_EXPIRY_SECONDS", 300)
+    expiry_minutes = max(expiry_seconds // 60, 1)
+    verify_url = request.build_absolute_uri(reverse("accounts:otp_verify"))
+
+    send_mail(
+        subject="Your ClubsHub login code",
+        message=(
+            f"Hello {user.display_name},\n\n"
+            f"Your one-time ClubsHub login code is: {code}\n\n"
+            f"This code expires in {expiry_minutes} minute(s) and can only be used once.\n"
+            f"You can enter it here: {verify_url}\n\n"
+            "If you did not request this code, you can safely ignore this email.\n\n"
+            "Regards,\n"
+            "ClubsHub"
+        ),
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[user.email],
+        fail_silently=False,
+    )
 
 
 def signup_view(request):
@@ -21,6 +70,7 @@ def signup_view(request):
             return redirect("clubs_events:event_feed")
     else:
         form = SignUpForm()
+
     return render(request, "accounts/signup.html", {"form": form})
 
 
@@ -28,16 +78,186 @@ def login_view(request):
     if request.user.is_authenticated:
         return redirect("clubs_events:event_feed")
 
+    next_url = request.GET.get("next") or request.POST.get("next") or ""
+
     if request.method == "POST":
-        form = EmailOrUsernameAuthenticationForm(request, data=request.POST)
+        form = EmailOrUsernameAuthenticationForm(request, request.POST)
         if form.is_valid():
-            login(request, form.get_user())
-            messages.success(request, f"Welcome back, {form.get_user().display_name}!")
-            next_url = request.GET.get("next") or "clubs_events:event_feed"
-            return redirect(next_url)
+            user = form.get_user()
+            login(request, user)
+            messages.success(request, f"Welcome back, {user.display_name}!")
+            return redirect(next_url or "clubs_events:event_feed")
     else:
         form = EmailOrUsernameAuthenticationForm(request)
-    return render(request, "accounts/login.html", {"form": form})
+
+    otp_request_form = EmailOTPRequestForm(
+        initial={"email": request.GET.get("email", "")}
+    )
+
+    return render(
+        request,
+        "accounts/login.html",
+        {
+            "form": form,
+            "otp_request_form": otp_request_form,
+            "next": next_url,
+        },
+    )
+
+
+def request_login_otp_view(request):
+    if request.user.is_authenticated:
+        return redirect("clubs_events:event_feed")
+
+    if request.method != "POST":
+        return redirect("accounts:login")
+
+    next_url = request.POST.get("next") or ""
+    form = EmailOTPRequestForm(request.POST)
+
+    if form.is_valid():
+        email = form.cleaned_data["email"]
+        user = User.objects.filter(email__iexact=email, is_active=True).first()
+
+        if user:
+            latest = (
+                EmailOTPChallenge.objects.filter(
+                    user=user,
+                    purpose=EmailOTPChallenge.Purpose.LOGIN,
+                )
+                .order_by("-created_at")
+                .first()
+            )
+
+            now = timezone.now()
+            cooldown_seconds = getattr(
+                settings, "CLUBSHUB_OTP_RESEND_COOLDOWN_SECONDS", 60
+            )
+            otp_expiry_seconds = getattr(settings, "CLUBSHUB_OTP_EXPIRY_SECONDS", 300)
+
+            can_send = True
+            if (
+                latest
+                and latest.last_sent_at
+                and latest.is_usable()
+                and (now - latest.last_sent_at).total_seconds() < cooldown_seconds
+            ):
+                can_send = False
+
+            if can_send:
+                EmailOTPChallenge.objects.filter(
+                    user=user,
+                    purpose=EmailOTPChallenge.Purpose.LOGIN,
+                    consumed_at__isnull=True,
+                ).update(consumed_at=now)
+
+                code = _generate_otp_code()
+                challenge = EmailOTPChallenge(
+                    user=user,
+                    email=user.email,
+                    purpose=EmailOTPChallenge.Purpose.LOGIN,
+                    expires_at=now + timedelta(seconds=otp_expiry_seconds),
+                    last_sent_at=now,
+                    request_ip=_client_ip(request),
+                    user_agent=(request.META.get("HTTP_USER_AGENT", "") or "")[:255],
+                )
+                challenge.set_code(code)
+                challenge.save()
+                _send_login_otp_email(user, code, request)
+
+        messages.success(
+            request,
+            "If an eligible account exists, we have sent a one-time code to the registered email address.",
+        )
+        params = {"email": form.cleaned_data["email"]}
+        if next_url:
+            params["next"] = next_url
+        return redirect(f"{reverse('accounts:otp_verify')}?{urlencode(params)}")
+
+    password_form = EmailOrUsernameAuthenticationForm(request)
+    return render(
+        request,
+        "accounts/login.html",
+        {
+            "form": password_form,
+            "otp_request_form": form,
+            "next": next_url,
+        },
+    )
+
+
+def otp_verify_view(request):
+    if request.user.is_authenticated:
+        return redirect("clubs_events:event_feed")
+
+    next_url = request.GET.get("next") or request.POST.get("next") or ""
+    initial_email = request.GET.get("email") or request.POST.get("email") or ""
+
+    if request.method == "POST":
+        form = EmailOTPVerifyForm(request.POST)
+        if form.is_valid():
+            email = form.cleaned_data["email"]
+            code = form.cleaned_data["code"]
+
+            user = User.objects.filter(email__iexact=email, is_active=True).first()
+            challenge = None
+            if user:
+                challenge = (
+                    EmailOTPChallenge.objects.filter(
+                        user=user,
+                        purpose=EmailOTPChallenge.Purpose.LOGIN,
+                        consumed_at__isnull=True,
+                    )
+                    .order_by("-created_at")
+                    .first()
+                )
+
+            max_attempts = getattr(settings, "CLUBSHUB_OTP_MAX_ATTEMPTS", 5)
+
+            if not user or not challenge:
+                messages.error(request, "Invalid or expired code. Please request a new one.")
+            elif challenge.is_expired:
+                challenge.mark_consumed()
+                messages.error(request, "Invalid or expired code. Please request a new one.")
+            elif challenge.failed_attempts >= max_attempts:
+                if not challenge.is_consumed:
+                    challenge.mark_consumed()
+                messages.error(
+                    request,
+                    "Too many failed attempts. Please request a new code.",
+                )
+            elif challenge.check_code(code):
+                challenge.mark_consumed()
+                login(request, user)
+                messages.success(request, f"Welcome back, {user.display_name}!")
+                return redirect(next_url or "clubs_events:event_feed")
+            else:
+                challenge.failed_attempts += 1
+                update_fields = ["failed_attempts"]
+                if challenge.failed_attempts >= max_attempts:
+                    challenge.consumed_at = timezone.now()
+                    update_fields.append("consumed_at")
+                challenge.save(update_fields=update_fields)
+
+                if challenge.failed_attempts >= max_attempts:
+                    messages.error(
+                        request,
+                        "Too many failed attempts. Please request a new code.",
+                    )
+                else:
+                    messages.error(request, "Invalid code. Please try again.")
+    else:
+        form = EmailOTPVerifyForm(initial={"email": initial_email})
+
+    return render(
+        request,
+        "accounts/otp_verify.html",
+        {
+            "form": form,
+            "otp_request_form": EmailOTPRequestForm(initial={"email": initial_email}),
+            "next": next_url,
+        },
+    )
 
 
 @login_required
@@ -53,6 +273,7 @@ def profile_view(request):
     followed_clubs = request.user.followed_clubs.all()
     my_rooms = request.user.room_handles.select_related("room").all()
     my_events = request.user.registrations.select_related("event", "event__club").all()
+
     context = {
         "represented_clubs": represented_clubs,
         "followed_clubs": followed_clubs,

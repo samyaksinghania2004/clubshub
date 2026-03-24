@@ -4,12 +4,11 @@ from django import forms
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.forms import UserCreationForm
 from django.core.exceptions import ValidationError
+from django.core.validators import RegexValidator
 
 User = get_user_model()
 
 INPUT_CLASS = "input"
-SELECT_CLASS = "select"
-TEXTAREA_CLASS = "textarea"
 
 
 class SignUpForm(UserCreationForm):
@@ -79,6 +78,7 @@ class EmailOrUsernameAuthenticationForm(forms.Form):
         cleaned_data = super().clean()
         identifier = cleaned_data.get("identifier")
         password = cleaned_data.get("password")
+
         if identifier and password:
             self.user_cache = authenticate(
                 self.request,
@@ -86,10 +86,64 @@ class EmailOrUsernameAuthenticationForm(forms.Form):
                 password=password,
             )
             if self.user_cache is None:
-                raise ValidationError("Please enter a correct username/email and password.")
+                raise ValidationError(
+                    "Please enter a correct username/email and password."
+                )
             if not self.user_cache.is_active:
                 raise ValidationError("This account is inactive.")
         return cleaned_data
 
     def get_user(self):
         return self.user_cache
+
+
+class EmailOTPRequestForm(forms.Form):
+    email = forms.EmailField(
+        label="IITK email",
+        widget=forms.EmailInput(
+            attrs={
+                "class": INPUT_CLASS,
+                "placeholder": "name@iitk.ac.in",
+                "autocomplete": "email",
+            }
+        ),
+    )
+
+    def clean_email(self):
+        email = self.cleaned_data["email"].strip().lower()
+        if not email.endswith("@iitk.ac.in"):
+            raise ValidationError("Please enter a valid IITK email address.")
+        return email
+
+
+class EmailOTPVerifyForm(forms.Form):
+    email = forms.EmailField(
+        label="IITK email",
+        widget=forms.EmailInput(
+            attrs={
+                "class": INPUT_CLASS,
+                "placeholder": "name@iitk.ac.in",
+                "autocomplete": "email",
+            }
+        ),
+    )
+    code = forms.CharField(
+        label="6-digit code",
+        max_length=6,
+        min_length=6,
+        validators=[RegexValidator(r"^\d{6}$", "Enter the 6-digit code.")],
+        widget=forms.TextInput(
+            attrs={
+                "class": INPUT_CLASS,
+                "placeholder": "123456",
+                "inputmode": "numeric",
+                "autocomplete": "one-time-code",
+            }
+        ),
+    )
+
+    def clean_email(self):
+        email = self.cleaned_data["email"].strip().lower()
+        if not email.endswith("@iitk.ac.in"):
+            raise ValidationError("Please enter a valid IITK email address.")
+        return email
