@@ -64,7 +64,7 @@
             </div>
             <div class="sidebar-group">
                 <p class="sidebar-label">Workspace</p>
-                <a class="sidebar-link" href="{% url 'core:notifications' %}">Inbox</a>
+                <a class="sidebar-link" href="{% url 'core:inbox' %}">Inbox</a>
                 <a class="sidebar-link" href="{% url 'core:help' %}">Help centre</a>
                 {% if request.user.role == 'institute_admin' or request.user.role == 'system_admin' %}
                     <a class="sidebar-link" href="{% url 'clubs_events:analytics_dashboard' %}">Analytics</a>

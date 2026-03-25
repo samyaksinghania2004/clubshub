@@ -136,3 +136,63 @@ class AuditLogEntry(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+
+
+class DirectMessageThread(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    participants = models.ManyToManyField(
+        "accounts.User",
+        through="DirectMessageParticipant",
+        related_name="direct_message_threads",
+    )
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["-updated_at"]
+
+    def touch(self) -> None:
+        self.updated_at = timezone.now()
+        self.save(update_fields=["updated_at"])
+
+    def __str__(self) -> str:
+        return f"DM thread {self.pk}"
+
+
+class DirectMessageParticipant(models.Model):
+    thread = models.ForeignKey(
+        DirectMessageThread, on_delete=models.CASCADE, related_name="participants_meta"
+    )
+    user = models.ForeignKey(
+        "accounts.User", on_delete=models.CASCADE, related_name="direct_message_participations"
+    )
+    last_read_at = models.DateTimeField(null=True, blank=True)
+    joined_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["thread", "user"], name="unique_dm_thread_participant"
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.user.display_name} in {self.thread_id}"
+
+
+class DirectMessage(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    thread = models.ForeignKey(
+        DirectMessageThread, on_delete=models.CASCADE, related_name="messages"
+    )
+    sender = models.ForeignKey(
+        "accounts.User", on_delete=models.CASCADE, related_name="direct_messages"
+    )
+    body = models.TextField(max_length=2000)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["created_at"]
+
+    def __str__(self) -> str:
+        return f"{self.sender.display_name}: {self.body[:30]}"

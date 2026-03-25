@@ -5,15 +5,22 @@ from urllib.parse import urlencode
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.db import models
+from django.db.models import OuterRef, Subquery
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 
 from clubs_events.models import Club, Event
 from rooms.models import DiscussionRoom
 
-from .forms import SearchForm
-from .models import Notification
+from .forms import DirectMessageForm, DirectMessageStartForm, SearchForm
+from .models import (
+    DirectMessage,
+    DirectMessageParticipant,
+    DirectMessageThread,
+    Notification,
+)
 
 
 def root_redirect(request):
@@ -102,6 +109,120 @@ def notifications_feed_view(request):
             "unread_count": request.user.notifications.filter(is_read=False).count(),
             "items": items,
         }
+    )
+
+
+def _get_dm_threads(user):
+    last_message = DirectMessage.objects.filter(thread=OuterRef("pk")).order_by(
+        "-created_at"
+    )
+    threads = (
+        DirectMessageThread.objects.filter(participants__user=user)
+        .distinct()
+        .annotate(
+            last_message_at=Subquery(last_message.values("created_at")[:1]),
+            last_message_body=Subquery(last_message.values("body")[:1]),
+        )
+        .prefetch_related("participants_meta__user")
+    )
+    for thread in threads:
+        participants = list(thread.participants_meta.all())
+        me = next((p for p in participants if p.user_id == user.id), None)
+        other = next((p for p in participants if p.user_id != user.id), None)
+        thread.me_participant = me
+        thread.other_user = other.user if other else None
+        last_read = me.last_read_at if me else None
+        thread.is_unread = bool(
+            thread.last_message_at and (not last_read or thread.last_message_at > last_read)
+        )
+    return threads
+
+
+def _get_or_create_dm_thread(user, recipient):
+    thread = (
+        DirectMessageThread.objects.filter(participants__user=user)
+        .filter(participants__user=recipient)
+        .distinct()
+        .first()
+    )
+    if thread:
+        return thread
+    thread = DirectMessageThread.objects.create()
+    DirectMessageParticipant.objects.create(
+        thread=thread, user=user, last_read_at=timezone.now()
+    )
+    DirectMessageParticipant.objects.create(thread=thread, user=recipient)
+    return thread
+
+
+@login_required
+def inbox_view(request):
+    start_form = DirectMessageStartForm(request.POST or None, user=request.user)
+    if request.method == "POST" and start_form.is_valid():
+        thread = _get_or_create_dm_thread(
+            request.user, start_form.cleaned_data["recipient"]
+        )
+        return redirect("core:inbox_thread", thread_pk=thread.pk)
+    threads = _get_dm_threads(request.user)
+    return render(
+        request,
+        "core/inbox.html",
+        {
+            "threads": threads,
+            "start_form": start_form,
+            "active_thread": None,
+            "message_form": None,
+            "dm_messages": [],
+        },
+    )
+
+
+@login_required
+def inbox_thread_view(request, thread_pk):
+    thread = get_object_or_404(
+        DirectMessageThread.objects.filter(participants__user=request.user),
+        pk=thread_pk,
+    )
+    participant = DirectMessageParticipant.objects.filter(
+        thread=thread, user=request.user
+    ).first()
+    message_form = DirectMessageForm(request.POST or None)
+    if request.method == "POST" and message_form.is_valid():
+        DirectMessage.objects.create(
+            thread=thread,
+            sender=request.user,
+            body=message_form.cleaned_data["body"],
+        )
+        if participant:
+            participant.last_read_at = timezone.now()
+            participant.save(update_fields=["last_read_at"])
+        thread.touch()
+        return redirect("core:inbox_thread", thread_pk=thread.pk)
+
+    if participant:
+        participant.last_read_at = timezone.now()
+        participant.save(update_fields=["last_read_at"])
+
+    messages_qs = thread.messages.select_related("sender")
+    threads = _get_dm_threads(request.user)
+    start_form = DirectMessageStartForm(user=request.user)
+    other_user = None
+    participants = list(thread.participants_meta.select_related("user").all())
+    for item in participants:
+        if item.user_id != request.user.id:
+            other_user = item.user
+            break
+    return render(
+        request,
+        "core/inbox.html",
+        {
+            "threads": threads,
+            "start_form": start_form,
+            "active_thread": thread,
+            "message_form": message_form,
+            "dm_messages": messages_qs,
+            "other_user": other_user,
+        },
     )
 
 

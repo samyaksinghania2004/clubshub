@@ -17,6 +17,7 @@
   --layout-gap: 1rem;
   --room-panel-width: 320px;
   --club-panel-width: 280px;
+  --dm-list-width: 320px;
   --composer-space: 6rem;
 }
 
@@ -666,6 +667,75 @@ body.modal-open {
   align-items: start;
 }
 
+.dm-layout {
+  display: grid;
+  grid-template-columns: var(--dm-list-width) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.dm-list-panel {
+  padding: 1.25rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.dm-thread-list {
+  display: grid;
+  gap: 0.6rem;
+  max-height: 60vh;
+  overflow: auto;
+}
+
+.dm-thread {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0.8rem;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--bg-muted);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.dm-thread.is-active {
+  border-color: rgba(47, 116, 255, 0.45);
+  background: rgba(47, 116, 255, 0.15);
+}
+
+.dm-thread__meta {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.dm-thread__preview {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.dm-thread__side {
+  display: grid;
+  justify-items: end;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+}
+
+.dm-chat-panel {
+  padding: 1.25rem;
+}
+
+.dm-chat-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.dm-chat-panel .chat-message {
+  max-width: 80%;
+}
+
 .club-chat-panel,
 .club-channel-panel {
   padding: 1.25rem;
@@ -746,7 +816,8 @@ body.modal-open {
 }
 
 .room-stream-card,
-.club-chat-panel {
+.club-chat-panel,
+.dm-chat-panel {
   display: flex;
   flex-direction: column;
   min-height: calc(100vh - 280px);
@@ -779,6 +850,11 @@ body.modal-open {
   box-shadow: var(--shadow);
 }
 
+.dm-layout .composer-card--sticky {
+  left: calc(var(--sidebar-width) + var(--app-main-padding) + var(--dm-list-width) + var(--layout-gap));
+  right: var(--app-main-padding);
+}
+
 .room-layout .composer-card--sticky {
   right: calc(var(--app-main-padding) + var(--room-panel-width) + var(--layout-gap));
 }
@@ -789,6 +865,10 @@ body.modal-open {
 
 .app-shell.is-sidebar-collapsed .composer-card--sticky {
   left: var(--app-main-padding);
+}
+
+.app-shell.is-sidebar-collapsed .dm-layout .composer-card--sticky {
+  left: calc(var(--app-main-padding) + var(--dm-list-width) + var(--layout-gap));
 }
 
 .composer-form {
@@ -810,6 +890,16 @@ body.modal-open {
 .chat-message.is-focused {
   border-color: rgba(251, 191, 36, 0.65);
   box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.25), 0 12px 30px rgba(251, 191, 36, 0.15);
+}
+
+.chat-message--me {
+  background: rgba(47, 116, 255, 0.15);
+  border-color: rgba(47, 116, 255, 0.35);
+  margin-left: auto;
+}
+
+.chat-message--me .chat-message__header {
+  justify-content: flex-end;
 }
 
 .highlight-message-block {
@@ -939,6 +1029,7 @@ body.modal-open {
   .dashboard-grid,
   .room-layout,
   .club-chat-layout,
+  .dm-layout,
   .filter-grid,
   .filter-grid--compact {
     grid-template-columns: 1fr;
@@ -968,7 +1059,8 @@ body.modal-open {
 
   .composer-card--sticky,
   .room-layout .composer-card--sticky,
-  .club-chat-layout .composer-card--sticky {
+  .club-chat-layout .composer-card--sticky,
+  .dm-layout .composer-card--sticky {
     left: var(--app-main-padding-mobile);
     right: var(--app-main-padding-mobile);
   }
