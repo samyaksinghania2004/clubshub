@@ -16,9 +16,11 @@
 <div class="app-shell">
     <header class="app-topbar">
         <div class="app-brand-row">
+            {% if request.user.is_authenticated %}
             <button type="button" class="app-menu-toggle button is-dark is-outlined" data-sidebar-toggle>
                 ☰
             </button>
+            {% endif %}
             <a class="app-brand" href="{% if request.user.is_authenticated %}{% url 'clubs_events:event_feed' %}{% else %}{% url 'accounts:login' %}{% endif %}">
                 <span class="app-brand-mark">C</span>
                 <span>
@@ -26,31 +28,30 @@
                     <small>IIT Kanpur</small>
                 </span>
             </a>
+            {% if request.user.is_authenticated %}
             <form class="app-search" action="{% url 'core:search' %}" method="get">
                 <input class="input" type="search" name="q" placeholder="Search clubs, events, rooms…">
             </form>
+            {% endif %}
         </div>
+        {% if request.user.is_authenticated %}
         <div class="app-topbar-actions">
             <button type="button" class="button is-dark is-outlined" data-theme-toggle>
                 Toggle theme
             </button>
-            {% if request.user.is_authenticated %}
-                <button type="button" class="button is-link is-light" data-enable-browser-notifications>
-                    Enable desktop alerts
-                </button>
-                <a class="button is-dark is-outlined" href="{% url 'core:notifications' %}">
-                    Notifications
-                    {% if unread_notifications_count %}
-                        <span class="badge-pill">{{ unread_notifications_count }}</span>
-                    {% endif %}
-                </a>
-                <a class="button is-dark is-outlined" href="{% url 'accounts:profile' %}">{{ request.user.display_name }}</a>
-                <a class="button is-danger is-light" href="{% url 'accounts:logout' %}">Log out</a>
-            {% else %}
-                <a class="button is-dark is-outlined" href="{% url 'accounts:login' %}">Log in</a>
-                <a class="button is-link" href="{% url 'accounts:signup' %}">Sign up</a>
-            {% endif %}
+            <button type="button" class="button is-link is-light" data-enable-browser-notifications>
+                Enable desktop alerts
+            </button>
+            <a class="button is-dark is-outlined" href="{% url 'core:notifications' %}">
+                Notifications
+                {% if unread_notifications_count %}
+                    <span class="badge-pill">{{ unread_notifications_count }}</span>
+                {% endif %}
+            </a>
+            <a class="button is-dark is-outlined" href="{% url 'accounts:profile' %}">{{ request.user.display_name }}</a>
+            <a class="button is-danger is-light" href="{% url 'accounts:logout' %}">Log out</a>
         </div>
+        {% endif %}
     </header>
 
     <div class="app-body{% if not request.user.is_authenticated %} app-body--no-sidebar{% endif %}">

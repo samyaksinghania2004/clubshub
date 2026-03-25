@@ -92,6 +92,18 @@ textarea::placeholder {
   border-bottom: 1px solid var(--border);
 }
 
+html[data-theme="dark"] .app-topbar .button.is-dark.is-outlined {
+  color: var(--text);
+  border-color: rgba(231, 236, 247, 0.35);
+}
+
+html[data-theme="dark"] .app-topbar .button.is-dark.is-outlined:hover,
+html[data-theme="dark"] .app-topbar .button.is-dark.is-outlined:focus {
+  background-color: rgba(231, 236, 247, 0.12);
+  border-color: rgba(231, 236, 247, 0.55);
+  color: var(--text);
+}
+
 html[data-theme="light"] .app-topbar {
   background: rgba(243, 246, 251, 0.88);
 }
