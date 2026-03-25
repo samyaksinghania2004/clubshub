@@ -465,17 +465,17 @@ def announcement_create_view(request, target_type, pk):
     else:
         raise Http404
 
-    form = AnnouncementForm(request.POST or None)
+    announcement = Announcement(
+        target_type=target_type,
+        club=club,
+        event=event,
+        room=room,
+    )
+    form = AnnouncementForm(request.POST or None, instance=announcement)
     if request.method == "POST" and form.is_valid():
-        ann = Announcement.objects.create(
-            author=request.user,
-            target_type=target_type,
-            club=club,
-            event=event,
-            room=room,
-            title=form.cleaned_data["title"],
-            body=form.cleaned_data["body"],
-        )
+        ann = form.save(commit=False)
+        ann.author = request.user
+        ann.save()
         action_url = f"{redirect_url}#announcement-{ann.pk}"
         if club:
             recipients = [
