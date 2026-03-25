@@ -349,6 +349,20 @@
       return distance < 160;
     };
 
+    const clearEmptyState = () => {
+      const emptyState = messageStream?.querySelector('.empty-state');
+      if (emptyState) {
+        emptyState.remove();
+      }
+    };
+
+    const clearEmptyState = () => {
+      const emptyState = messageStream?.querySelector('.empty-state');
+      if (emptyState) {
+        emptyState.remove();
+      }
+    };
+
     const scrollToBottom = () => {
       if (!messageStream) return;
       messageStream.scrollTop = messageStream.scrollHeight;
@@ -375,6 +389,7 @@
       messageEl.appendChild(header);
       messageEl.appendChild(body);
       messageStream.appendChild(messageEl);
+      clearEmptyState();
       seenMessageIds.add(item.id);
       lastSeen = item.created_at || lastSeen;
 
@@ -577,6 +592,7 @@
       if (!messageStream || !item || seenMessageIds.has(item.id)) return;
       const atBottom = shouldStickToBottom();
       const messageEl = kind === 'room' ? buildRoomMessage(item) : buildClubMessage(item);
+      clearEmptyState();
       messageStream.appendChild(messageEl);
       seenMessageIds.add(item.id);
       lastSeen = item.created_at || lastSeen;
