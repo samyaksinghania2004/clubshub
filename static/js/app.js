@@ -497,6 +497,13 @@
       return distance < 160;
     };
 
+    const clearEmptyState = () => {
+      const emptyState = messageStream?.querySelector('.empty-state');
+      if (emptyState) {
+        emptyState.remove();
+      }
+    };
+
     const scrollToBottom = () => {
       if (!messageStream) return;
       messageStream.scrollTop = messageStream.scrollHeight;
