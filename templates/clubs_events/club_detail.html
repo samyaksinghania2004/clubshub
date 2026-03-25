@@ -177,40 +177,86 @@
         </div>
         {% if show_members %}
         <div class="channel-group">
-            <p class="eyebrow">Members</p>
+            <div class="member-group-header">
+                <p class="eyebrow">Members</p>
+                <span class="tag is-link is-light">{{ online_members|length }} online</span>
+            </div>
             <div class="member-list">
-                {% for m in members %}
-                    <div class="member-row">
-                        <div>
-                            <strong>{{ m.user.display_name }}</strong>
-                            <p class="muted-text">{{ m.user.email }}</p>
+                {% if online_members %}
+                    <p class="member-group-label">Online</p>
+                    {% for m in online_members %}
+                        <div class="member-row">
+                            <div class="member-identity">
+                                <span class="presence-dot is-online" aria-hidden="true"></span>
+                                <div>
+                                    <strong>{{ m.user.display_name }}</strong>
+                                    <p class="muted-text">{{ m.user.email }}</p>
+                                </div>
+                            </div>
+                            <div class="member-actions">
+                                <span class="tag is-link is-light">{{ m.get_local_role_display }}</span>
+                                {% if can_manage_members and m.user_id != request.user.id %}
+                                    <details class="action-menu action-menu--compact">
+                                        <summary class="action-menu__toggle button is-dark is-outlined" aria-label="Member options">
+                                            ...
+                                        </summary>
+                                        <div class="action-menu__panel">
+                                            {% if m.local_role == 'member' %}
+                                                <a class="action-menu__item" href="{% url 'clubs_events:assign_secretary' club.pk m.user_id %}">Make secretary</a>
+                                            {% endif %}
+                                            {% if m.local_role == 'secretary' %}
+                                                <a class="action-menu__item" href="{% url 'clubs_events:revoke_secretary' club.pk m.user_id %}">Revoke secretary</a>
+                                            {% endif %}
+                                            <form method="post" action="{% url 'clubs_events:club_member_remove' club.pk m.user_id %}" data-confirm="Remove {{ m.user.display_name }} from {{ club.name }}?">
+                                                {% csrf_token %}
+                                                <button class="action-menu__item is-danger" type="submit">Remove from club</button>
+                                            </form>
+                                        </div>
+                                    </details>
+                                {% endif %}
+                            </div>
                         </div>
-                        <div class="member-actions">
-                            <span class="tag is-link is-light">{{ m.get_local_role_display }}</span>
-                            {% if can_manage_members and m.user_id != request.user.id %}
-                                <details class="action-menu action-menu--compact">
-                                    <summary class="action-menu__toggle button is-dark is-outlined" aria-label="Member options">
-                                        ...
-                                    </summary>
-                                    <div class="action-menu__panel">
-                                        {% if m.local_role == 'member' %}
-                                            <a class="action-menu__item" href="{% url 'clubs_events:assign_secretary' club.pk m.user_id %}">Make secretary</a>
-                                        {% endif %}
-                                        {% if m.local_role == 'secretary' %}
-                                            <a class="action-menu__item" href="{% url 'clubs_events:revoke_secretary' club.pk m.user_id %}">Revoke secretary</a>
-                                        {% endif %}
-                                        <form method="post" action="{% url 'clubs_events:club_member_remove' club.pk m.user_id %}" data-confirm="Remove {{ m.user.display_name }} from {{ club.name }}?">
-                                            {% csrf_token %}
-                                            <button class="action-menu__item is-danger" type="submit">Remove from club</button>
-                                        </form>
-                                    </div>
-                                </details>
-                            {% endif %}
+                    {% endfor %}
+                {% endif %}
+                {% if offline_members %}
+                    <p class="member-group-label">Offline</p>
+                    {% for m in offline_members %}
+                        <div class="member-row">
+                            <div class="member-identity">
+                                <span class="presence-dot is-offline" aria-hidden="true"></span>
+                                <div>
+                                    <strong>{{ m.user.display_name }}</strong>
+                                    <p class="muted-text">{{ m.user.email }}</p>
+                                </div>
+                            </div>
+                            <div class="member-actions">
+                                <span class="tag is-link is-light">{{ m.get_local_role_display }}</span>
+                                {% if can_manage_members and m.user_id != request.user.id %}
+                                    <details class="action-menu action-menu--compact">
+                                        <summary class="action-menu__toggle button is-dark is-outlined" aria-label="Member options">
+                                            ...
+                                        </summary>
+                                        <div class="action-menu__panel">
+                                            {% if m.local_role == 'member' %}
+                                                <a class="action-menu__item" href="{% url 'clubs_events:assign_secretary' club.pk m.user_id %}">Make secretary</a>
+                                            {% endif %}
+                                            {% if m.local_role == 'secretary' %}
+                                                <a class="action-menu__item" href="{% url 'clubs_events:revoke_secretary' club.pk m.user_id %}">Revoke secretary</a>
+                                            {% endif %}
+                                            <form method="post" action="{% url 'clubs_events:club_member_remove' club.pk m.user_id %}" data-confirm="Remove {{ m.user.display_name }} from {{ club.name }}?">
+                                                {% csrf_token %}
+                                                <button class="action-menu__item is-danger" type="submit">Remove from club</button>
+                                            </form>
+                                        </div>
+                                    </details>
+                                {% endif %}
+                            </div>
                         </div>
-                    </div>
-                {% empty %}
+                    {% endfor %}
+                {% endif %}
+                {% if not online_members and not offline_members %}
                     <p class="muted-text">No members yet.</p>
-                {% endfor %}
+                {% endif %}
             </div>
         </div>
         {% endif %}

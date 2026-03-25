@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import timedelta
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
@@ -182,7 +184,11 @@ def club_detail_view(request, pk, slug=None):
     membership = ClubMembership.objects.filter(
         club=club, user=request.user, status=ClubMembership.Status.ACTIVE
     ).first()
-    members = club.memberships.filter(status=ClubMembership.Status.ACTIVE).select_related("user")
+    members = (
+        club.memberships.filter(status=ClubMembership.Status.ACTIVE)
+        .select_related("user")
+        .order_by("user__username")
+    )
     is_member = bool(membership)
     is_coordinator = bool(
         membership and membership.local_role == ClubMembership.LocalRole.COORDINATOR
@@ -268,6 +274,16 @@ def club_detail_view(request, pk, slug=None):
     can_create_channel = is_global_admin(request.user) or is_coordinator
     can_manage_members = is_admin or is_coordinator
     show_members = is_member or is_admin
+    online_members = []
+    offline_members = []
+    if show_members:
+        online_cutoff = timezone.now() - timedelta(minutes=5)
+        for member in members:
+            last_seen = member.user.last_seen_at
+            if last_seen and last_seen >= online_cutoff:
+                online_members.append(member)
+            else:
+                offline_members.append(member)
 
     def can_access_channel(channel):
         if not channel.is_private:
@@ -340,6 +356,8 @@ def club_detail_view(request, pk, slug=None):
             "channel_member_form": channel_member_form,
             "channel_members": channel_members,
             "show_members": show_members,
+            "online_members": online_members,
+            "offline_members": offline_members,
             "can_view_private_members": can_view_private_members,
             "can_add_private_members": can_add_private_members,
             "show_channel_menu": show_channel_menu,
