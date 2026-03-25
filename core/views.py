@@ -7,10 +7,14 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.db import models
 from django.db.models import OuterRef, Subquery
-from django.http import JsonResponse
+from django.http import HttpResponseNotAllowed, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
+from django.utils.formats import date_format
+from django.utils.html import escape
+from django.utils.html import linebreaksbr
 
 from clubs_events.models import Club, Event
 from rooms.models import DiscussionRoom
@@ -167,6 +171,18 @@ def _get_dm_block_state(user, other_user):
     return blocked_by_me, blocked_me
 
 
+def _serialize_dm_message(message, viewer):
+    created_at = timezone.localtime(message.created_at)
+    return {
+        "id": str(message.id),
+        "body_html": str(linebreaksbr(escape(message.body))),
+        "created_at": message.created_at.isoformat(),
+        "created_at_display": date_format(created_at, "DATETIME_FORMAT"),
+        "sender_name": message.sender.display_name,
+        "is_me": message.sender_id == viewer.id,
+    }
+
+
 @login_required
 def inbox_view(request):
     start_form = DirectMessageStartForm(request.POST or None, user=request.user)
@@ -231,6 +247,7 @@ def inbox_thread_view(request, thread_pk):
         participant.save(update_fields=["last_read_at"])
 
     messages_qs = thread.messages.select_related("sender")
+    last_message = messages_qs.last()
     threads = _get_dm_threads(request.user)
     start_form = DirectMessageStartForm(user=request.user)
 
@@ -247,6 +264,7 @@ def inbox_thread_view(request, thread_pk):
             "can_send": can_send,
             "blocked_by_me": blocked_by_me,
             "blocked_me": blocked_me,
+            "last_message_at": last_message.created_at if last_message else None,
         },
     )
 
@@ -273,6 +291,62 @@ def inbox_block_view(request, thread_pk, action):
         ).delete()
         messages.success(request, f"You unblocked {other_user.display_name}.")
     return redirect("core:inbox_thread", thread_pk=thread_pk)
+
+
+@login_required
+def inbox_messages_view(request, thread_pk):
+    thread = get_object_or_404(
+        DirectMessageThread.objects.filter(participants=request.user),
+        pk=thread_pk,
+    )
+    since = request.GET.get("since", "").strip()
+    messages_qs = thread.messages.select_related("sender")
+    if since:
+        parsed = parse_datetime(since)
+        if parsed:
+            if timezone.is_naive(parsed):
+                parsed = timezone.make_aware(parsed, timezone.get_current_timezone())
+            messages_qs = messages_qs.filter(created_at__gt=parsed)
+    items = [_serialize_dm_message(message, request.user) for message in messages_qs]
+    if items:
+        participant = DirectMessageParticipant.objects.filter(
+            thread=thread, user=request.user
+        ).first()
+        if participant:
+            participant.last_read_at = timezone.now()
+            participant.save(update_fields=["last_read_at"])
+    return JsonResponse({"items": items})
+
+
+@login_required
+def inbox_send_view(request, thread_pk):
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+    thread = get_object_or_404(
+        DirectMessageThread.objects.filter(participants=request.user),
+        pk=thread_pk,
+    )
+    other_user = thread.participants.exclude(id=request.user.id).first()
+    if other_user:
+        blocked_by_me, blocked_me = _get_dm_block_state(request.user, other_user)
+        if blocked_by_me or blocked_me:
+            return JsonResponse({"error": "blocked"}, status=403)
+    form = DirectMessageForm(request.POST)
+    if not form.is_valid():
+        return JsonResponse({"errors": form.errors}, status=400)
+    message = DirectMessage.objects.create(
+        thread=thread,
+        sender=request.user,
+        body=form.cleaned_data["body"],
+    )
+    participant = DirectMessageParticipant.objects.filter(
+        thread=thread, user=request.user
+    ).first()
+    if participant:
+        participant.last_read_at = timezone.now()
+        participant.save(update_fields=["last_read_at"])
+    thread.touch()
+    return JsonResponse({"item": _serialize_dm_message(message, request.user)})
 
 
 @login_required

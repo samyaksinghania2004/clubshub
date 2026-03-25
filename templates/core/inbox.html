@@ -55,7 +55,15 @@
         </div>
     </aside>
 
-    <section class="surface-card dm-chat-panel">
+    <section
+        class="surface-card dm-chat-panel"
+        {% if active_thread %}
+            data-dm-thread="{{ active_thread.pk }}"
+            data-dm-messages-url="{% url 'core:inbox_messages' active_thread.pk %}"
+            data-dm-send-url="{% url 'core:inbox_send' active_thread.pk %}"
+            data-dm-last="{% if last_message_at %}{{ last_message_at|date:'c' }}{% endif %}"
+        {% endif %}
+    >
         {% if active_thread %}
             <div class="dm-chat-header">
                 <div class="dm-chat-identity">
@@ -95,7 +103,7 @@
 
             <div class="message-stream dm-message-stream">
                 {% for message in dm_messages %}
-                    <article class="chat-message dm-bubble {% if message.sender_id == request.user.id %}chat-message--me{% endif %}">
+                    <article class="chat-message dm-bubble {% if message.sender_id == request.user.id %}chat-message--me{% endif %}" data-message-id="{{ message.pk }}">
                         <div class="chat-message__header">
                             <div>
                                 <strong>{% if message.sender_id == request.user.id %}You{% else %}{{ message.sender.display_name }}{% endif %}</strong>

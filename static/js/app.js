@@ -299,6 +299,112 @@
     }
   });
 
+  const dmPanel = document.querySelector('.dm-chat-panel[data-dm-thread]');
+  if (dmPanel) {
+    const messagesUrl = dmPanel.dataset.dmMessagesUrl;
+    const sendUrl = dmPanel.dataset.dmSendUrl;
+    const messageStream = dmPanel.querySelector('.dm-message-stream');
+    const dmForm = dmPanel.querySelector('.dm-composer form');
+    let lastSeen = dmPanel.dataset.dmLast || '';
+    const seenMessageIds = new Set(
+      Array.from(messageStream?.querySelectorAll('[data-message-id]') || []).map(
+        (el) => el.dataset.messageId,
+      ),
+    );
+
+    const shouldStickToBottom = () => {
+      if (!messageStream) return false;
+      const distance =
+        messageStream.scrollHeight - messageStream.scrollTop - messageStream.clientHeight;
+      return distance < 160;
+    };
+
+    const scrollToBottom = () => {
+      if (!messageStream) return;
+      messageStream.scrollTop = messageStream.scrollHeight;
+    };
+
+    const appendMessage = (item, forceScroll = false) => {
+      if (!messageStream || !item || seenMessageIds.has(item.id)) return;
+      const atBottom = shouldStickToBottom();
+      const messageEl = document.createElement('article');
+      messageEl.className = `chat-message dm-bubble${item.is_me ? ' chat-message--me' : ''}`;
+      messageEl.dataset.messageId = item.id;
+
+      const header = document.createElement('div');
+      header.className = 'chat-message__header';
+      const headerInner = document.createElement('div');
+      const senderName = item.is_me ? 'You' : item.sender_name;
+      headerInner.innerHTML = `<strong>${senderName}</strong><span class="muted-text">- ${item.created_at_display}</span>`;
+      header.appendChild(headerInner);
+
+      const body = document.createElement('div');
+      body.className = 'chat-message__body';
+      body.innerHTML = item.body_html;
+
+      messageEl.appendChild(header);
+      messageEl.appendChild(body);
+      messageStream.appendChild(messageEl);
+      seenMessageIds.add(item.id);
+      lastSeen = item.created_at || lastSeen;
+
+      if (forceScroll || atBottom) {
+        scrollToBottom();
+      }
+    };
+
+    const pollMessages = async () => {
+      if (!messagesUrl || document.hidden) return;
+      const url = lastSeen ? `${messagesUrl}?since=${encodeURIComponent(lastSeen)}` : messagesUrl;
+      try {
+        const response = await fetch(url, {
+          headers: { 'X-Requested-With': 'XMLHttpRequest' },
+          credentials: 'same-origin',
+        });
+        if (!response.ok) return;
+        const payload = await response.json();
+        (payload.items || []).forEach((item) => appendMessage(item));
+      } catch (error) {
+        console.debug('DM polling failed', error);
+      }
+    };
+
+    const schedulePoll = () => {
+      window.setTimeout(async () => {
+        await pollMessages();
+        schedulePoll();
+      }, 1000);
+    };
+    schedulePoll();
+
+    if (dmForm && sendUrl) {
+      dmForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const formData = new FormData(dmForm);
+        const bodyValue = (formData.get('body') || '').toString().trim();
+        if (!bodyValue) return;
+        try {
+          const response = await fetch(sendUrl, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            credentials: 'same-origin',
+            body: formData,
+          });
+          if (response.ok) {
+            const payload = await response.json();
+            appendMessage(payload.item, true);
+            dmForm.reset();
+            return;
+          }
+          const payload = await response.json();
+          showToast('Message not sent', payload.error || 'Please try again.');
+        } catch (error) {
+          showToast('Message not sent', 'Please try again.');
+        }
+      });
+    }
+  }
+
   const focused = document.querySelector('.chat-message.is-focused');
   if (focused) {
     focused.scrollIntoView({ block: 'center', behavior: 'smooth' });

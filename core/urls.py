@@ -26,6 +26,16 @@ urlpatterns = [
         views.inbox_block_view,
         name="inbox_block",
     ),
+    path(
+        "inbox/<uuid:thread_pk>/messages/",
+        views.inbox_messages_view,
+        name="inbox_messages",
+    ),
+    path(
+        "inbox/<uuid:thread_pk>/send/",
+        views.inbox_send_view,
+        name="inbox_send",
+    ),
     path("users/search/", views.user_search_view, name="user_search"),
     path("help/", views.help_view, name="help"),
 ]
