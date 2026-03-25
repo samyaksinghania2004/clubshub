@@ -4,6 +4,7 @@ from datetime import timedelta
 from urllib.parse import urlencode
 
 from django.contrib import messages
+from django.db import IntegrityError
 from django.contrib.auth.decorators import login_required
 from django.http import Http404, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
@@ -153,29 +154,33 @@ def join_room_view(request, pk):
             DiscussionRoom.AccessType.EVENT_ONLY,
         }:
             status = RoomHandle.Status.PENDING
-        if existing and existing.status == RoomHandle.Status.LEFT:
-            existing.handle_name = form.cleaned_data["handle_name"]
-            existing.status = status
-            existing.is_muted = False
-            existing.expelled_at = None
-            existing.approved_at = timezone.now() if status == RoomHandle.Status.APPROVED else None
-            existing.save(
-                update_fields=[
-                    "handle_name",
-                    "status",
-                    "is_muted",
-                    "expelled_at",
-                    "approved_at",
-                ]
-            )
-        else:
-            RoomHandle.objects.create(
-                room=room,
-                user=request.user,
-                handle_name=form.cleaned_data["handle_name"],
-                status=status,
-                approved_at=timezone.now() if status == RoomHandle.Status.APPROVED else None,
-            )
+        try:
+            if existing and existing.status == RoomHandle.Status.LEFT:
+                existing.handle_name = form.cleaned_data["handle_name"]
+                existing.status = status
+                existing.is_muted = False
+                existing.expelled_at = None
+                existing.approved_at = timezone.now() if status == RoomHandle.Status.APPROVED else None
+                existing.save(
+                    update_fields=[
+                        "handle_name",
+                        "status",
+                        "is_muted",
+                        "expelled_at",
+                        "approved_at",
+                    ]
+                )
+            else:
+                RoomHandle.objects.create(
+                    room=room,
+                    user=request.user,
+                    handle_name=form.cleaned_data["handle_name"],
+                    status=status,
+                    approved_at=timezone.now() if status == RoomHandle.Status.APPROVED else None,
+                )
+        except IntegrityError:
+            form.add_error("handle_name", "This handle is already taken in the room.")
+            return render(request, "rooms/join_room.html", {"room": room, "form": form})
         pending_invite = RoomInvite.objects.filter(
             room=room,
             recipient=request.user,

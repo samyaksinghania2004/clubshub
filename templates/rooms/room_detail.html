@@ -10,10 +10,6 @@
     <div class="hero-actions">
         {% if handle and handle.status == 'approved' %}
             <span class="tag is-link is-light">Handle: {{ handle.handle_name }}</span>
-            <form method="post" action="{% url 'rooms:leave_room' room.pk %}">
-                {% csrf_token %}
-                <button class="button is-danger is-light" type="submit">Leave room</button>
-            </form>
         {% elif read_only_mode %}
             <span class="tag is-dark is-light">Moderator preview mode</span>
         {% endif %}
@@ -25,6 +21,12 @@
                 <button class="action-menu__item" type="button" data-modal-target="room-members-modal">
                     View members
                 </button>
+                {% if handle and handle.status == 'approved' %}
+                    <form method="post" action="{% url 'rooms:leave_room' room.pk %}">
+                        {% csrf_token %}
+                        <button class="action-menu__item is-danger" type="submit">Leave room</button>
+                    </form>
+                {% endif %}
             </div>
         </details>
         {% if can_manage_room %}
