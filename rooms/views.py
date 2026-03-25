@@ -203,6 +203,14 @@ def leave_room_view(request, pk):
         handle.status = RoomHandle.Status.LEFT
         handle.is_muted = False
         handle.save(update_fields=["status", "is_muted"])
+        if room.access_type == DiscussionRoom.AccessType.PRIVATE_INVITE_ONLY:
+            RoomInvite.objects.filter(
+                room=room,
+                recipient=request.user,
+            ).exclude(status=RoomInvite.Status.REVOKED).update(
+                status=RoomInvite.Status.REVOKED,
+                updated_at=timezone.now(),
+            )
         messages.info(request, f"You left {room.name}. You can rejoin later with a fresh request.")
     return redirect("rooms:room_list")
 

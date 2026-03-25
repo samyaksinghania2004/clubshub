@@ -58,6 +58,27 @@ class RoomPermissionAndInviteTests(TestCase):
         invite.refresh_from_db()
         self.assertEqual(invite.status, RoomInvite.Status.ACCEPTED)
 
+    def test_private_room_requires_fresh_invite_after_leaving(self):
+        room = DiscussionRoom.objects.create(
+            name="Private",
+            description="d",
+            room_type="topic",
+            access_type="private_invite_only",
+            created_by=self.coord,
+        )
+        self.client.login(username="coord", password="StrongPass@123")
+        self.client.post(
+            reverse("rooms:invite_user", args=[room.pk]),
+            {"identifier": self.student.email},
+        )
+        invite = RoomInvite.objects.get(room=room, recipient=self.student)
+        self.client.login(username="student", password="StrongPass@123")
+        self.client.post(reverse("rooms:join_room", args=[room.pk]), {"handle_name": "invitee"})
+        self.client.post(reverse("rooms:leave_room", args=[room.pk]))
+        self.assertEqual(self.client.get(reverse("rooms:join_room", args=[room.pk])).status_code, 403)
+        invite.refresh_from_db()
+        self.assertEqual(invite.status, RoomInvite.Status.REVOKED)
+
     def test_open_room_limit(self):
         self.client.login(username="student", password="StrongPass@123")
         for idx in range(5):
