@@ -36,7 +36,7 @@
                 </div>
                 <p>{{ room.description|default:'No description added yet.' }}</p>
                 <div class="meta-row">
-                    <span>{{ room.room_handles.count }} handles</span>
+                    <span>{{ room.active_handles_count }} handle{{ room.active_handles_count|pluralize }}</span>
                 </div>
                 <div class="surface-card__actions">
                     <a class="button is-link" href="{% url 'rooms:join_room' room.pk %}">Open / join</a>

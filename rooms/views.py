@@ -5,6 +5,7 @@ from urllib.parse import urlencode
 
 from django.contrib import messages
 from django.db import IntegrityError
+from django.db.models import Count, Q
 from django.contrib.auth.decorators import login_required
 from django.http import Http404, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
@@ -39,6 +40,13 @@ def room_list_view(request):
     )
     if q:
         rooms = rooms.filter(name__icontains=q) | rooms.filter(description__icontains=q)
+    rooms = rooms.annotate(
+        active_handles_count=Count(
+            "room_handles",
+            filter=Q(room_handles__status=RoomHandle.Status.APPROVED),
+            distinct=True,
+        )
+    )
     return render(
         request,
         "rooms/room_list.html",
