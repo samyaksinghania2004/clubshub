@@ -421,10 +421,16 @@
         const formData = new FormData(dmForm);
         const bodyValue = (formData.get('body') || '').toString().trim();
         if (!bodyValue) return;
+        const headers = { 'X-Requested-With': 'XMLHttpRequest' };
+        const csrfToken =
+          dmForm.querySelector('input[name="csrfmiddlewaretoken"]')?.value || getCookie('csrftoken');
+        if (csrfToken) {
+          headers['X-CSRFToken'] = csrfToken;
+        }
         try {
           const response = await fetch(sendUrl, {
             method: 'POST',
-            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            headers,
             credentials: 'same-origin',
             body: formData,
           });
@@ -434,8 +440,17 @@
             dmForm.reset();
             return;
           }
-          const payload = await response.json();
-          showToast('Message not sent', payload.error || 'Please try again.');
+          let payload;
+          try {
+            payload = await response.json();
+          } catch (error) {
+            payload = null;
+          }
+          const errorMessage =
+            payload?.error ||
+            (payload?.errors ? Object.values(payload.errors).flat()[0] : null) ||
+            `Server error (${response.status})`;
+          showToast('Message not sent', errorMessage);
         } catch (error) {
           showToast('Message not sent', 'Please try again.');
         }
@@ -624,10 +639,16 @@
         const formData = new FormData(chatForm);
         const bodyValue = (formData.get('text') || '').toString().trim();
         if (!bodyValue) return;
+        const headers = { 'X-Requested-With': 'XMLHttpRequest' };
+        const csrfToken =
+          chatForm.querySelector('input[name="csrfmiddlewaretoken"]')?.value || getCookie('csrftoken');
+        if (csrfToken) {
+          headers['X-CSRFToken'] = csrfToken;
+        }
         try {
           const response = await fetch(sendUrl, {
             method: 'POST',
-            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            headers,
             credentials: 'same-origin',
             body: formData,
           });
@@ -637,8 +658,17 @@
             chatForm.reset();
             return;
           }
-          const payload = await response.json();
-          showToast('Message not sent', payload.error || 'Please try again.');
+          let payload;
+          try {
+            payload = await response.json();
+          } catch (error) {
+            payload = null;
+          }
+          const errorMessage =
+            payload?.error ||
+            (payload?.errors ? Object.values(payload.errors).flat()[0] : null) ||
+            `Server error (${response.status})`;
+          showToast('Message not sent', errorMessage);
         } catch (error) {
           showToast('Message not sent', 'Please try again.');
         }
