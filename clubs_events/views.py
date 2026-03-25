@@ -164,7 +164,7 @@ def club_list_view(request):
 
 
 @login_required
-def club_detail_view(request, pk, channel_slug=None):
+def club_detail_view(request, pk, slug=None):
     club = get_object_or_404(Club, pk=pk)
     membership = ClubMembership.objects.filter(
         club=club, user=request.user, status=ClubMembership.Status.ACTIVE
@@ -195,8 +195,8 @@ def club_detail_view(request, pk, channel_slug=None):
             continue
         channels.append(channel)
 
-    if channel_slug:
-        active_channel = next((c for c in channels if c.slug == channel_slug), None)
+    if slug:
+        active_channel = next((c for c in channels if c.slug == slug), None)
         if active_channel is None:
             raise Http404
     else:
