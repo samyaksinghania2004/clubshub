@@ -13,7 +13,12 @@
 </section>
 
 <section class="panel-card">
-    <form method="get" class="filter-grid">
+    <details class="filter-disclosure" {% if q or selected_club or tag or date_from or date_to %}open{% endif %}>
+        <summary class="filter-summary">
+            <span>Filters</span>
+            <span class="muted-text">Refine upcoming events</span>
+        </summary>
+        <form method="get" class="filter-grid">
         <div>
             <label class="label">Keyword</label>
             <input class="input" type="text" name="q" value="{{ q }}" maxlength="50" placeholder="Hackathon, workshop, panel…">
@@ -41,10 +46,12 @@
             <label class="label">To</label>
             <input class="input" type="date" name="date_to" value="{{ date_to }}">
         </div>
-        <div class="filter-actions">
-            <button class="button is-link is-fullwidth" type="submit">Apply filters</button>
-        </div>
-    </form>
+            <div class="filter-actions">
+                <button class="button is-link is-fullwidth" type="submit">Apply filters</button>
+                <a class="button is-light is-fullwidth" href="{% url 'clubs_events:event_feed' %}">Reset</a>
+            </div>
+        </form>
+    </details>
 </section>
 
 <div class="dashboard-grid">

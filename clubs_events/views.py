@@ -59,7 +59,7 @@ def event_feed_view(request):
     clubs = Club.objects.filter(is_active=True).order_by("name")
     events = Event.objects.select_related("club").filter(
         status=Event.Status.PUBLISHED,
-        start_time__gte=timezone.now(),
+        end_time__gte=timezone.now(),
         is_archived=False,
         club__is_active=True,
     )
@@ -82,7 +82,7 @@ def event_feed_view(request):
         .filter(
             club_id__in=member_club_ids,
             status=Event.Status.PUBLISHED,
-            start_time__gte=timezone.now(),
+            end_time__gte=timezone.now(),
             is_archived=False,
         )
         .exclude(pk__in=events.values_list("pk", flat=True))[:5]
@@ -91,7 +91,7 @@ def event_feed_view(request):
         request.user.registrations.select_related("event", "event__club")
         .filter(
             status__in=[Registration.Status.REGISTERED, Registration.Status.WAITLISTED],
-            event__start_time__gte=timezone.now(),
+            event__end_time__gte=timezone.now(),
         )[:6]
     )
 
