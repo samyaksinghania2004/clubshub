@@ -105,6 +105,7 @@ class RoomHandle(models.Model):
     class Status(models.TextChoices):
         PENDING = "pending", "Pending"
         APPROVED = "approved", "Approved"
+        LEFT = "left", "Left"
         EXPELLED = "expelled", "Expelled"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -164,10 +165,14 @@ class Message(models.Model):
 
     def can_be_edited_by(self, user) -> bool:
         return (
-            not self.is_deleted
+            bool(user)
+            and not self.is_deleted
             and self.handle.user_id == user.id
             and timezone.now() <= self.editable_until()
         )
+
+    def can_be_deleted_by(self, user) -> bool:
+        return bool(user) and not self.is_deleted and self.handle.user_id == user.id
 
     def soft_delete(self, actor=None):
         self.is_deleted = True

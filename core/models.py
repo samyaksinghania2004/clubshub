@@ -23,10 +23,19 @@ class Notification(models.Model):
         "accounts.User", on_delete=models.CASCADE, related_name="notifications"
     )
     text = models.CharField(max_length=255)
+    body = models.TextField(blank=True)
+    action_url = models.CharField(max_length=255, blank=True)
     notification_type = models.CharField(
         max_length=32, choices=Type.choices, default=Type.GENERIC
     )
     is_read = models.BooleanField(default=False)
+    club = models.ForeignKey(
+        "clubs_events.Club",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="notifications",
+    )
     event = models.ForeignKey(
         "clubs_events.Event",
         on_delete=models.SET_NULL,
@@ -52,6 +61,9 @@ class Notification(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"{self.get_notification_type_display()}: {self.text}"
 
 
 class AuditLogEntry(models.Model):

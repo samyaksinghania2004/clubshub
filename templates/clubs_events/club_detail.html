@@ -1,27 +1,117 @@
 {% extends 'base.html' %}
-{% block title %}{{ club.name }}{% endblock %}
+{% block title %}{{ club.name }} · ClubsHub{% endblock %}
 {% block content %}
-<h1 class="title">{{ club.name }}</h1>
-<p>{{ club.description }}</p>
-{% if membership and membership.status == 'active' %}
-<form method="post" action="{% url 'clubs_events:club_leave' club.pk %}">{% csrf_token %}<button class="button">Leave Club</button></form>
-{% else %}
-<form method="post" action="{% url 'clubs_events:club_join' club.pk %}">{% csrf_token %}<button class="button is-primary">Join Club</button></form>
-{% endif %}
+<section class="page-hero page-hero--club">
+    <div>
+        <p class="eyebrow">{{ club.category }}</p>
+        <h1 class="page-title">{{ club.name }}</h1>
+        <p class="page-subtitle">{{ club.description }}</p>
+        <div class="meta-row">
+            <span>{{ members|length }} members</span>
+            <span>{{ club.contact_email }}</span>
+        </div>
+    </div>
+    <div class="hero-actions">
+        {% if membership and membership.status == 'active' %}
+            <span class="tag is-link is-light">You are {{ membership.get_local_role_display }}</span>
+            <form method="post" action="{% url 'clubs_events:club_leave' club.pk %}">
+                {% csrf_token %}
+                <button class="button is-danger is-light" type="submit">Leave club</button>
+            </form>
+        {% else %}
+            <form method="post" action="{% url 'clubs_events:club_join' club.pk %}">
+                {% csrf_token %}
+                <button class="button is-link" type="submit">Join club</button>
+            </form>
+        {% endif %}
+        {% if can_manage_club %}
+            <a class="button is-dark is-outlined" href="{% url 'clubs_events:club_edit' club.pk %}">Edit club</a>
+        {% endif %}
+        {% if can_create_event_for_club %}
+            <a class="button is-dark is-outlined" href="{% url 'clubs_events:event_create' %}?club={{ club.pk }}">New event</a>
+        {% endif %}
+        {% if can_create_room_for_club %}
+            <a class="button is-dark is-outlined" href="{% url 'rooms:room_create' %}?club={{ club.pk }}&room_type=club">New room</a>
+        {% endif %}
+    </div>
+</section>
 
-<h2 class="subtitle mt-4">Members</h2>
-<ul>
-{% for m in members %}
-<li>{{ m.user.display_name }} - {{ m.get_local_role_display }}
-{% if can_manage_club and m.local_role == 'member' %}<a href="{% url 'clubs_events:assign_secretary' club.pk m.user_id %}">Assign secretary</a>{% endif %}
-{% if can_manage_club and m.local_role == 'secretary' %}<a href="{% url 'clubs_events:revoke_secretary' club.pk m.user_id %}">Revoke secretary</a>{% endif %}
-</li>
-{% endfor %}
-</ul>
+<div class="dashboard-grid">
+    <section class="stack-gap">
+        <article class="surface-card">
+            <div class="surface-card__header">
+                <h2>Announcement board</h2>
+                {% if can_post_announcement %}
+                    <a class="button is-link is-light" href="{% url 'clubs_events:announcement_create' 'club' club.pk %}">Post announcement</a>
+                {% endif %}
+            </div>
+            {% for ann in announcements %}
+                <article id="announcement-{{ ann.pk }}" class="announcement-card">
+                    <div class="announcement-card__header">
+                        <h3>{{ ann.title }}</h3>
+                        <span class="muted-text">{{ ann.created_at }}</span>
+                    </div>
+                    <p>{{ ann.body|linebreaksbr }}</p>
+                </article>
+            {% empty %}
+                <div class="empty-state compact-empty">
+                    <p>No announcements posted yet.</p>
+                </div>
+            {% endfor %}
+        </article>
 
-<h2 class="subtitle mt-4">Announcements</h2>
-{% if can_post_announcement %}<a class="button is-link is-small" href="{% url 'clubs_events:announcement_create' 'club' club.pk %}">Post announcement</a>{% endif %}
-{% for ann in announcements %}
-<div class="box"><strong>{{ ann.title }}</strong><p>{{ ann.body }}</p></div>
-{% empty %}<p>No announcements yet.</p>{% endfor %}
+        <article class="surface-card">
+            <div class="surface-card__header">
+                <h2>Members</h2>
+                <span class="tag is-dark is-light">Scoped roles reset when a member leaves</span>
+            </div>
+            <div class="member-list">
+                {% for m in members %}
+                    <div class="member-row">
+                        <div>
+                            <strong>{{ m.user.display_name }}</strong>
+                            <p class="muted-text">{{ m.user.email }}</p>
+                        </div>
+                        <div class="member-actions">
+                            <span class="tag is-link is-light">{{ m.get_local_role_display }}</span>
+                            {% if can_manage_club and m.local_role == 'member' %}
+                                <a class="button is-small is-dark is-outlined" href="{% url 'clubs_events:assign_secretary' club.pk m.user_id %}">Make secretary</a>
+                            {% endif %}
+                            {% if can_manage_club and m.local_role == 'secretary' %}
+                                <a class="button is-small is-danger is-light" href="{% url 'clubs_events:revoke_secretary' club.pk m.user_id %}">Revoke secretary</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </article>
+    </section>
+
+    <aside class="stack-gap">
+        <article class="surface-card compact-card">
+            <div class="surface-card__header"><h2>Upcoming events</h2></div>
+            {% if recent_events %}
+                <ul class="simple-list">
+                    {% for event in recent_events %}
+                        <li><a href="{% url 'clubs_events:event_detail' event.pk %}">{{ event.title }}</a></li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="muted-text">No active events yet.</p>
+            {% endif %}
+        </article>
+        <article class="surface-card compact-card">
+            <div class="surface-card__header"><h2>Discussion rooms</h2></div>
+            {% if recent_rooms %}
+                <ul class="simple-list">
+                    {% for room in recent_rooms %}
+                        <li><a href="{% url 'rooms:room_detail' room.pk %}">{{ room.name }}</a></li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="muted-text">No rooms created yet.</p>
+            {% endif %}
+        </article>
+    </aside>
+</div>
 {% endblock %}

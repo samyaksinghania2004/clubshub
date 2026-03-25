@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+from urllib.parse import urlencode
+
 from django.contrib.auth.decorators import login_required
 from django.db import models
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 
 from clubs_events.models import Club, Event
 from rooms.models import DiscussionRoom
@@ -19,7 +23,9 @@ def root_redirect(request):
 
 @login_required
 def notifications_list_view(request):
-    notifications = request.user.notifications.select_related("event", "room").all()
+    notifications = request.user.notifications.select_related(
+        "club", "event", "room", "message"
+    ).all()
     if request.method == "POST":
         notifications.filter(is_read=False).update(is_read=True)
         return redirect("core:notifications")
@@ -36,6 +42,66 @@ def mark_notification_read_view(request, pk):
     notification.is_read = True
     notification.save(update_fields=["is_read"])
     return redirect("core:notifications")
+
+
+@login_required
+def open_notification_view(request, pk):
+    notification = get_object_or_404(Notification, pk=pk, user=request.user)
+    if not notification.is_read:
+        notification.is_read = True
+        notification.save(update_fields=["is_read"])
+
+    if notification.action_url:
+        return redirect(notification.action_url)
+    if notification.message_id and notification.room_id:
+        params = urlencode({"focus": str(notification.message_id), "source": "notification"})
+        return redirect(f"{reverse('rooms:room_detail', args=[notification.room_id])}?{params}")
+    if notification.room_id:
+        return redirect("rooms:room_detail", pk=notification.room_id)
+    if notification.event_id:
+        return redirect("clubs_events:event_detail", pk=notification.event_id)
+    if notification.club_id:
+        return redirect("clubs_events:club_detail", pk=notification.club_id)
+    return redirect("core:notifications")
+
+
+@login_required
+def notifications_feed_view(request):
+    notifications = (
+        request.user.notifications.select_related("club", "event", "room", "message")
+        .filter(is_read=False)[:10]
+    )
+    items = []
+    for notification in notifications:
+        if notification.action_url:
+            url = notification.action_url
+        elif notification.message_id and notification.room_id:
+            params = urlencode({"focus": str(notification.message_id), "source": "notification"})
+            url = f"{reverse('rooms:room_detail', args=[notification.room_id])}?{params}"
+        elif notification.room_id:
+            url = reverse("rooms:room_detail", args=[notification.room_id])
+        elif notification.event_id:
+            url = reverse("clubs_events:event_detail", args=[notification.event_id])
+        elif notification.club_id:
+            url = reverse("clubs_events:club_detail", args=[notification.club_id])
+        else:
+            url = reverse("core:notifications")
+        items.append(
+            {
+                "id": str(notification.pk),
+                "title": notification.text,
+                "body": notification.body,
+                "type": notification.notification_type,
+                "url": url,
+                "created_at": notification.created_at.isoformat(),
+            }
+        )
+    return JsonResponse(
+        {
+            "unread_count": request.user.notifications.filter(is_read=False).count(),
+            "items": items,
+        }
+    )
 
 
 @login_required
@@ -60,8 +126,7 @@ def search_view(request):
                 | models.Q(club__name__icontains=query)
             )
             rooms = DiscussionRoom.objects.filter(is_archived=False).filter(
-                models.Q(name__icontains=query)
-                | models.Q(description__icontains=query)
+                models.Q(name__icontains=query) | models.Q(description__icontains=query)
             )
 
     return render(

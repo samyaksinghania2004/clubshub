@@ -1,15 +1,24 @@
 from __future__ import annotations
 
 from datetime import timedelta
+from urllib.parse import urlencode
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.http import Http404, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 
+from clubs_events.models import Club, ClubMembership, Event
 from core.models import AuditLogEntry, Notification
-from core.permissions import can_create_room, can_manage_room, can_view_reports, is_global_admin
+from core.permissions import (
+    can_create_room,
+    can_manage_room,
+    can_post_announcement,
+    can_view_reports,
+    is_global_admin,
+)
 from core.services import create_notification, log_audit
 
 from .forms import (
@@ -24,15 +33,64 @@ from .forms import (
 from .models import DiscussionRoom, Message, Report, RoomHandle, RoomInvite
 
 
+def _room_form_targets_for_user(user):
+    if is_global_admin(user):
+        clubs = Club.objects.filter(is_active=True)
+        events = Event.objects.filter(is_archived=False, club__is_active=True)
+        return clubs, events
+
+    clubs = Club.objects.filter(
+        memberships__user=user,
+        memberships__status=ClubMembership.Status.ACTIVE,
+        memberships__local_role__in=[
+            ClubMembership.LocalRole.COORDINATOR,
+            ClubMembership.LocalRole.SECRETARY,
+        ],
+        is_active=True,
+    ).distinct()
+    events = Event.objects.filter(club__in=clubs, is_archived=False).distinct()
+    return clubs, events
+
+
 @login_required
 def room_list_view(request):
-    rooms = DiscussionRoom.objects.filter(is_archived=False)
-    return render(request, "rooms/room_list.html", {"rooms": rooms, "my_handles": request.user.room_handles.select_related("room")})
+    q = request.GET.get("q", "").strip()[:50]
+    rooms = DiscussionRoom.objects.filter(is_archived=False).select_related("club", "event")
+    if q:
+        rooms = rooms.filter(name__icontains=q) | rooms.filter(description__icontains=q)
+    clubs, events = _room_form_targets_for_user(request.user)
+    return render(
+        request,
+        "rooms/room_list.html",
+        {
+            "rooms": rooms.distinct(),
+            "q": q,
+            "my_handles": request.user.room_handles.select_related("room"),
+            "can_create_room_any": is_global_admin(request.user) or clubs.exists() or events.exists(),
+        },
+    )
 
 
 @login_required
 def room_create_view(request):
-    form = DiscussionRoomForm(request.POST or None)
+    available_clubs, available_events = _room_form_targets_for_user(request.user)
+    if not (is_global_admin(request.user) or available_clubs.exists() or available_events.exists()):
+        return HttpResponseForbidden("You do not have permission to create rooms.")
+
+    initial = {}
+    if request.GET.get("club"):
+        initial["club"] = request.GET.get("club")
+    if request.GET.get("event"):
+        initial["event"] = request.GET.get("event")
+    if request.GET.get("room_type"):
+        initial["room_type"] = request.GET.get("room_type")
+
+    form = DiscussionRoomForm(
+        request.POST or None,
+        club_queryset=available_clubs if not is_global_admin(request.user) else Club.objects.filter(is_active=True),
+        event_queryset=available_events if not is_global_admin(request.user) else Event.objects.filter(is_archived=False),
+        initial=initial,
+    )
     if request.method == "POST" and form.is_valid():
         club = form.cleaned_data.get("club")
         event = form.cleaned_data.get("event")
@@ -41,20 +99,36 @@ def room_create_view(request):
         room = form.save(commit=False)
         room.created_by = request.user
         room.save()
-        log_audit(action_type=AuditLogEntry.ActionType.ROOM_CREATED, acting_user=request.user, room=room)
+        messages.success(request, "Discussion room created.")
+        log_audit(
+            action_type=AuditLogEntry.ActionType.ROOM_CREATED,
+            acting_user=request.user,
+            room=room,
+        )
         return redirect("rooms:room_detail", pk=room.pk)
     return render(request, "rooms/room_form.html", {"form": form, "mode": "Create"})
 
 
 @login_required
 def room_edit_view(request, pk):
-    room = get_object_or_404(DiscussionRoom, pk=pk)
+    room = get_object_or_404(DiscussionRoom.objects.select_related("club", "event"), pk=pk)
     if not can_manage_room(request.user, room):
         raise Http404
-    form = DiscussionRoomForm(request.POST or None, instance=room)
+    available_clubs, available_events = _room_form_targets_for_user(request.user)
+    form = DiscussionRoomForm(
+        request.POST or None,
+        instance=room,
+        club_queryset=available_clubs if not is_global_admin(request.user) else Club.objects.filter(is_active=True),
+        event_queryset=available_events if not is_global_admin(request.user) else Event.objects.filter(is_archived=False),
+    )
     if request.method == "POST" and form.is_valid():
         room = form.save()
-        log_audit(action_type=AuditLogEntry.ActionType.ROOM_UPDATED, acting_user=request.user, room=room)
+        messages.success(request, "Room updated.")
+        log_audit(
+            action_type=AuditLogEntry.ActionType.ROOM_UPDATED,
+            acting_user=request.user,
+            room=room,
+        )
         return redirect("rooms:room_detail", pk=room.pk)
     return render(request, "rooms/room_form.html", {"form": form, "mode": "Edit", "room": room})
 
@@ -62,56 +136,135 @@ def room_edit_view(request, pk):
 def _invite_allows_join(room, user):
     if room.access_type != DiscussionRoom.AccessType.PRIVATE_INVITE_ONLY:
         return True
-    return RoomInvite.objects.filter(room=room, recipient=user, status=RoomInvite.Status.ACCEPTED).exists()
+    return RoomInvite.objects.filter(
+        room=room,
+        recipient=user,
+        status=RoomInvite.Status.ACCEPTED,
+    ).exists()
 
 
 @login_required
 def join_room_view(request, pk):
     room = get_object_or_404(DiscussionRoom, pk=pk, is_archived=False)
     if request.user.is_globally_banned:
+        messages.error(request, "Your account is blocked from room participation.")
         return redirect("rooms:room_list")
     if not _invite_allows_join(room, request.user):
         return HttpResponseForbidden("Invite required for this room.")
 
     existing = RoomHandle.objects.filter(room=room, user=request.user).first()
-    if existing:
-        if existing.status == RoomHandle.Status.EXPELLED:
-            return redirect("rooms:room_list")
-        if existing.status == RoomHandle.Status.PENDING:
-            return redirect("rooms:room_list")
+    if existing and existing.status == RoomHandle.Status.EXPELLED:
+        messages.error(request, "You cannot rejoin this room.")
+        return redirect("rooms:room_list")
+    if existing and existing.status == RoomHandle.Status.APPROVED:
         return redirect("rooms:room_detail", pk=room.pk)
+    if existing and existing.status == RoomHandle.Status.PENDING:
+        messages.info(request, "Your join request is still pending approval.")
+        return redirect("rooms:room_list")
 
-    form = JoinRoomForm(request.POST or None, room=room)
+    form = JoinRoomForm(
+        request.POST or None,
+        room=room,
+        existing_handle=existing if existing and existing.status == RoomHandle.Status.LEFT else None,
+    )
     if request.method == "POST" and form.is_valid():
         status = RoomHandle.Status.APPROVED
-        if room.access_type in {DiscussionRoom.AccessType.CLUB_ONLY, DiscussionRoom.AccessType.EVENT_ONLY}:
+        if room.access_type in {
+            DiscussionRoom.AccessType.CLUB_ONLY,
+            DiscussionRoom.AccessType.EVENT_ONLY,
+        }:
             status = RoomHandle.Status.PENDING
-        RoomHandle.objects.create(
-            room=room,
-            user=request.user,
-            handle_name=form.cleaned_data["handle_name"],
-            status=status,
-            approved_at=timezone.now() if status == RoomHandle.Status.APPROVED else None,
-        )
-        return redirect("rooms:room_detail", pk=room.pk) if status == RoomHandle.Status.APPROVED else redirect("rooms:room_list")
+
+        if existing and existing.status == RoomHandle.Status.LEFT:
+            existing.handle_name = form.cleaned_data["handle_name"]
+            existing.status = status
+            existing.is_muted = False
+            existing.expelled_at = None
+            existing.approved_at = timezone.now() if status == RoomHandle.Status.APPROVED else None
+            existing.save(
+                update_fields=[
+                    "handle_name",
+                    "status",
+                    "is_muted",
+                    "expelled_at",
+                    "approved_at",
+                ]
+            )
+        else:
+            RoomHandle.objects.create(
+                room=room,
+                user=request.user,
+                handle_name=form.cleaned_data["handle_name"],
+                status=status,
+                approved_at=timezone.now() if status == RoomHandle.Status.APPROVED else None,
+            )
+        if status == RoomHandle.Status.APPROVED:
+            messages.success(request, f"You joined {room.name}.")
+            return redirect("rooms:room_detail", pk=room.pk)
+        messages.info(request, "Your room access request is pending approval.")
+        return redirect("rooms:room_list")
     return render(request, "rooms/join_room.html", {"room": room, "form": form})
 
 
 @login_required
+def leave_room_view(request, pk):
+    room = get_object_or_404(DiscussionRoom, pk=pk)
+    handle = get_object_or_404(RoomHandle, room=room, user=request.user)
+    if request.method == "POST":
+        handle.status = RoomHandle.Status.LEFT
+        handle.is_muted = False
+        handle.save(update_fields=["status", "is_muted"])
+        messages.info(request, f"You left {room.name}. You can rejoin later with a fresh request.")
+    return redirect("rooms:room_list")
+
+
+@login_required
 def room_detail_view(request, pk):
-    room = get_object_or_404(DiscussionRoom.objects.select_related("club", "event"), pk=pk)
+    room = get_object_or_404(DiscussionRoom.objects.select_related("club", "event", "event__club"), pk=pk)
+    can_review_reports = can_view_reports(request.user)
+    manager_access = can_manage_room(request.user, room)
     handle = RoomHandle.objects.filter(room=room, user=request.user).first()
+    read_only_mode = False
+
     if not handle:
-        return redirect("rooms:join_room", pk=room.pk)
-    if handle.status == RoomHandle.Status.PENDING:
-        return render(request, "rooms/room_pending.html", {"room": room, "handle": handle})
-    if handle.status == RoomHandle.Status.EXPELLED:
+        if manager_access or can_review_reports:
+            read_only_mode = True
+        else:
+            return redirect("rooms:join_room", pk=room.pk)
+    elif handle.status == RoomHandle.Status.PENDING:
+        if manager_access or can_review_reports:
+            read_only_mode = True
+        else:
+            return render(request, "rooms/room_pending.html", {"room": room, "handle": handle})
+    elif handle.status == RoomHandle.Status.EXPELLED:
         return redirect("rooms:room_list")
+    elif handle.status == RoomHandle.Status.LEFT:
+        return redirect("rooms:join_room", pk=room.pk)
 
     form = MessageForm(request.POST or None)
-    if request.method == "POST" and form.is_valid() and not handle.is_muted:
-        Message.objects.create(room=room, handle=handle, text=form.cleaned_data["text"])
-        return redirect("rooms:room_detail", pk=room.pk)
+    if request.method == "POST":
+        if read_only_mode or not handle or not handle.can_post:
+            messages.error(request, "You cannot post in this room right now.")
+            return redirect("rooms:room_detail", pk=room.pk)
+        if form.is_valid():
+            Message.objects.create(room=room, handle=handle, text=form.cleaned_data["text"])
+            return redirect("rooms:room_detail", pk=room.pk)
+
+    messages_qs = room.messages.select_related("handle", "handle__user")
+    focus_message_id = request.GET.get("focus", "")
+    surrounding_participants = []
+    seen_users = set()
+    editable_message_ids = []
+    deletable_message_ids = []
+    for message_obj in messages_qs:
+        key = message_obj.handle.user_id
+        if key not in seen_users:
+            seen_users.add(key)
+            surrounding_participants.append(message_obj.handle)
+        if message_obj.can_be_edited_by(request.user):
+            editable_message_ids.append(message_obj.pk)
+        if message_obj.can_be_deleted_by(request.user) or manager_access:
+            deletable_message_ids.append(message_obj.pk)
 
     return render(
         request,
@@ -119,12 +272,21 @@ def room_detail_view(request, pk):
         {
             "room": room,
             "handle": handle,
-            "messages_qs": room.messages.select_related("handle", "handle__user"),
+            "messages_qs": messages_qs,
             "form": form,
-            "pending_handles": room.room_handles.filter(status=RoomHandle.Status.PENDING) if can_manage_room(request.user, room) else None,
-            "can_manage_room": can_manage_room(request.user, room),
-            "invites": room.invites.select_related("recipient") if can_manage_room(request.user, room) else None,
-            "invite_form": RoomInviteForm(room=room),
+            "pending_handles": room.room_handles.filter(status=RoomHandle.Status.PENDING).select_related("user") if manager_access else None,
+            "can_manage_room": manager_access,
+            "invites": room.invites.select_related("recipient") if manager_access else None,
+            "invite_form": RoomInviteForm(room=room, inviter=request.user),
+            "read_only_mode": read_only_mode,
+            "focus_message_id": focus_message_id,
+            "review_mode": request.GET.get("review") == "1",
+            "show_real_identities": can_review_reports,
+            "participants": surrounding_participants,
+            "editable_message_ids": editable_message_ids,
+            "deletable_message_ids": deletable_message_ids,
+            "announcements": room.announcements.filter(is_active=True)[:10],
+            "can_post_announcement": can_post_announcement(request.user, room=room),
         },
     )
 
@@ -134,15 +296,28 @@ def invite_user_view(request, pk):
     room = get_object_or_404(DiscussionRoom, pk=pk)
     if not can_manage_room(request.user, room):
         return HttpResponseForbidden("Not allowed")
-    form = RoomInviteForm(request.POST or None, room=room)
+    form = RoomInviteForm(request.POST or None, room=room, inviter=request.user)
     if request.method == "POST" and form.is_valid():
         invite, _ = RoomInvite.objects.update_or_create(
             room=room,
             recipient=form.cleaned_data["recipient"],
             defaults={"status": RoomInvite.Status.PENDING, "invited_by": request.user},
         )
-        create_notification(user=invite.recipient, text=f"You were invited to {room.name}", notification_type=Notification.Type.INVITE, room=room)
-        log_audit(action_type=AuditLogEntry.ActionType.ROOM_INVITE_CREATED, acting_user=request.user, room=room, target_user=invite.recipient)
+        create_notification(
+            user=invite.recipient,
+            text=f"Invite to {room.name}",
+            body=f"{request.user.display_name} invited you to join {room.name}. Open this notification to review the room.",
+            notification_type=Notification.Type.INVITE,
+            room=room,
+            action_url=reverse("rooms:join_room", args=[room.pk]),
+        )
+        log_audit(
+            action_type=AuditLogEntry.ActionType.ROOM_INVITE_CREATED,
+            acting_user=request.user,
+            room=room,
+            target_user=invite.recipient,
+        )
+        messages.success(request, f"Invite sent to {invite.recipient.display_name}.")
     return redirect("rooms:room_detail", pk=room.pk)
 
 
@@ -151,10 +326,21 @@ def respond_invite_view(request, invite_pk, decision):
     invite = get_object_or_404(RoomInvite, pk=invite_pk, recipient=request.user)
     if invite.status != RoomInvite.Status.PENDING:
         return redirect("core:notifications")
-    invite.status = RoomInvite.Status.ACCEPTED if decision == "accept" else RoomInvite.Status.REJECTED
+    invite.status = (
+        RoomInvite.Status.ACCEPTED if decision == "accept" else RoomInvite.Status.REJECTED
+    )
     invite.save(update_fields=["status", "updated_at"])
-    log_audit(action_type=AuditLogEntry.ActionType.ROOM_INVITE_UPDATED, acting_user=request.user, room=invite.room, details={"status": invite.status})
-    return redirect("rooms:join_room", pk=invite.room_id) if decision == "accept" else redirect("core:notifications")
+    log_audit(
+        action_type=AuditLogEntry.ActionType.ROOM_INVITE_UPDATED,
+        acting_user=request.user,
+        room=invite.room,
+        details={"status": invite.status},
+    )
+    return (
+        redirect("rooms:join_room", pk=invite.room_id)
+        if decision == "accept"
+        else redirect("core:notifications")
+    )
 
 
 @login_required
@@ -166,6 +352,7 @@ def approve_handle_view(request, room_pk, handle_pk):
     handle.status = RoomHandle.Status.APPROVED
     handle.approved_at = timezone.now()
     handle.save(update_fields=["status", "approved_at"])
+    messages.success(request, f"{handle.handle_name} can now enter the room.")
     return redirect("rooms:room_detail", pk=room.pk)
 
 
@@ -176,6 +363,7 @@ def reject_handle_view(request, room_pk, handle_pk):
         raise Http404
     handle = get_object_or_404(RoomHandle, pk=handle_pk, room=room)
     handle.delete()
+    messages.info(request, "Join request rejected.")
     return redirect("rooms:room_detail", pk=room.pk)
 
 
@@ -184,22 +372,31 @@ def message_edit_view(request, room_pk, message_pk):
     room = get_object_or_404(DiscussionRoom, pk=room_pk)
     message_obj = get_object_or_404(Message, pk=message_pk, room=room)
     if not message_obj.can_be_edited_by(request.user):
+        messages.error(request, "That message can no longer be edited.")
         return redirect("rooms:room_detail", pk=room.pk)
     form = MessageEditForm(request.POST or None, initial={"text": message_obj.text})
     if request.method == "POST" and form.is_valid():
         message_obj.text = form.cleaned_data["text"]
         message_obj.is_edited = True
         message_obj.save(update_fields=["text", "is_edited", "updated_at"])
+        messages.success(request, "Message updated.")
         return redirect("rooms:room_detail", pk=room.pk)
-    return render(request, "rooms/message_edit.html", {"room": room, "message_obj": message_obj, "form": form})
+    return render(
+        request,
+        "rooms/message_edit.html",
+        {"room": room, "message_obj": message_obj, "form": form},
+    )
 
 
 @login_required
 def message_delete_view(request, room_pk, message_pk):
     room = get_object_or_404(DiscussionRoom, pk=room_pk)
     message_obj = get_object_or_404(Message, pk=message_pk, room=room)
-    if message_obj.can_be_edited_by(request.user) or can_manage_room(request.user, room):
+    if message_obj.can_be_deleted_by(request.user) or can_manage_room(request.user, room):
         message_obj.soft_delete(actor=request.user)
+        messages.info(request, "Message deleted.")
+    else:
+        messages.error(request, "You are not allowed to delete that message.")
     return redirect("rooms:room_detail", pk=room.pk)
 
 
@@ -207,38 +404,203 @@ def message_delete_view(request, room_pk, message_pk):
 def report_message_view(request, room_pk, message_pk):
     room = get_object_or_404(DiscussionRoom, pk=room_pk)
     message_obj = get_object_or_404(Message, pk=message_pk, room=room)
+    if message_obj.handle.user_id == request.user.id:
+        messages.error(request, "You cannot report your own message.")
+        return redirect("rooms:room_detail", pk=room.pk)
+    if message_obj.is_deleted:
+        messages.error(request, "Deleted messages cannot be reported.")
+        return redirect("rooms:room_detail", pk=room.pk)
+
     form = ReportForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
-        Report.objects.create(message=message_obj, reporter=request.user, reason=form.cleaned_data["reason"])
+        Report.objects.create(
+            message=message_obj,
+            reporter=request.user,
+            reason=form.cleaned_data["reason"],
+        )
+        messages.success(request, "The report has been submitted for admin review.")
         return redirect("rooms:room_detail", pk=room.pk)
-    return render(request, "rooms/report_form.html", {"room": room, "message_obj": message_obj, "form": form})
+    return render(
+        request,
+        "rooms/report_form.html",
+        {"room": room, "message_obj": message_obj, "form": form},
+    )
 
 
 @login_required
 def moderation_dashboard_view(request):
     if not can_view_reports(request.user):
         return HttpResponseForbidden("Only institute and system admins can access this page.")
-    reports = Report.objects.select_related("message", "message__room", "message__handle", "reporter")
-    status = request.GET.get("status")
+    reports = Report.objects.select_related(
+        "message",
+        "message__room",
+        "message__handle",
+        "message__handle__user",
+        "reporter",
+    )
+    status = request.GET.get("status", "")
+    room_id = request.GET.get("room", "")
     if status:
         reports = reports.filter(status=status)
-    return render(request, "rooms/moderation_dashboard.html", {"reports": reports, "status": status, "rooms": DiscussionRoom.objects.all(), "status_choices": Report.Status.choices})
+    if room_id:
+        reports = reports.filter(message__room_id=room_id)
+    return render(
+        request,
+        "rooms/moderation_dashboard.html",
+        {
+            "reports": reports,
+            "status": status,
+            "room_id": room_id,
+            "rooms": DiscussionRoom.objects.all(),
+            "status_choices": Report.Status.choices,
+        },
+    )
 
 
 @login_required
 def moderate_report_view(request, report_pk):
     if not can_view_reports(request.user):
         return HttpResponseForbidden("Only institute and system admins can access this page.")
-    report = get_object_or_404(Report.objects.select_related("message", "message__room", "message__handle", "message__handle__user", "reporter"), pk=report_pk)
+    report = get_object_or_404(
+        Report.objects.select_related(
+            "message",
+            "message__room",
+            "message__handle",
+            "message__handle__user",
+            "reporter",
+        ),
+        pk=report_pk,
+    )
     room = report.message.room
-    surrounding_messages = room.messages.filter(created_at__gte=report.message.created_at - timedelta(minutes=10), created_at__lte=report.message.created_at + timedelta(minutes=10)).select_related("handle")
+    surrounding_messages = (
+        room.messages.filter(
+            created_at__gte=report.message.created_at - timedelta(minutes=10),
+            created_at__lte=report.message.created_at + timedelta(minutes=10),
+        )
+        .select_related("handle", "handle__user")
+        .order_by("created_at")
+    )
+    participants = []
+    participant_ids = set()
+    for item in surrounding_messages:
+        if item.handle.user_id in participant_ids:
+            continue
+        participant_ids.add(item.handle.user_id)
+        participants.append(item.handle)
+
+    focus_query = urlencode({"focus": str(report.message.pk), "review": 1, "report": str(report.pk)})
+    jump_url = f"{reverse('rooms:room_detail', args=[room.pk])}?{focus_query}"
 
     form = ModerateReportForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         action = form.cleaned_data["action"]
-        report.status = Report.Status.DISMISSED if action == ModerateReportForm.ACTION_DISMISS else Report.Status.ACTION_TAKEN
+        reason = form.cleaned_data["reason"]
+        handle = report.message.handle
+        acted = False
+
+        if action == ModerateReportForm.ACTION_DISMISS:
+            report.status = Report.Status.DISMISSED
+            log_audit(
+                action_type=AuditLogEntry.ActionType.REPORT_DISMISSED,
+                acting_user=request.user,
+                room=room,
+                message=report.message,
+                reason=reason,
+            )
+        else:
+            report.status = Report.Status.ACTION_TAKEN
+            if action in {
+                ModerateReportForm.ACTION_DELETE,
+                ModerateReportForm.ACTION_DELETE_AND_MUTE,
+            } and not report.message.is_deleted:
+                report.message.soft_delete(actor=request.user)
+                acted = True
+                log_audit(
+                    action_type=AuditLogEntry.ActionType.MESSAGE_DELETED,
+                    acting_user=request.user,
+                    room=room,
+                    message=report.message,
+                    reason=reason,
+                )
+            if action in {
+                ModerateReportForm.ACTION_MUTE,
+                ModerateReportForm.ACTION_DELETE_AND_MUTE,
+            }:
+                handle.is_muted = True
+                handle.save(update_fields=["is_muted"])
+                acted = True
+                log_audit(
+                    action_type=AuditLogEntry.ActionType.HANDLE_MUTED,
+                    acting_user=request.user,
+                    target_user=handle.user,
+                    target_handle_name=handle.handle_name,
+                    room=room,
+                    reason=reason,
+                )
+            if action in {
+                ModerateReportForm.ACTION_EXPEL,
+                ModerateReportForm.ACTION_REVEAL,
+            }:
+                handle.status = RoomHandle.Status.EXPELLED
+                handle.expelled_at = timezone.now()
+                handle.save(update_fields=["status", "expelled_at"])
+                acted = True
+                log_audit(
+                    action_type=AuditLogEntry.ActionType.HANDLE_EXPELLED,
+                    acting_user=request.user,
+                    target_user=handle.user,
+                    target_handle_name=handle.handle_name,
+                    room=room,
+                    reason=reason,
+                )
+            if action == ModerateReportForm.ACTION_REVEAL:
+                handle.revealed_at = timezone.now()
+                handle.save(update_fields=["revealed_at"])
+                acted = True
+                log_audit(
+                    action_type=AuditLogEntry.ActionType.HANDLE_REVEALED,
+                    acting_user=request.user,
+                    target_user=handle.user,
+                    target_handle_name=handle.handle_name,
+                    room=room,
+                    reason=reason,
+                )
+            if not acted:
+                report.status = Report.Status.IN_REVIEW
+
         report.resolved_by = request.user
-        report.resolution_reason = form.cleaned_data["reason"]
+        report.resolution_reason = reason
         report.resolved_at = timezone.now()
-        report.save(update_fields=["status", "resolved_by", "resolution_reason", "resolved_at", "updated_at"])
-    return render(request, "rooms/moderate_report.html", {"report": report, "room": room, "form": form, "surrounding_messages": surrounding_messages})
+        report.save(
+            update_fields=[
+                "status",
+                "resolved_by",
+                "resolution_reason",
+                "resolved_at",
+                "updated_at",
+            ]
+        )
+        create_notification(
+            user=report.reporter,
+            text=f"Your report in {room.name} was reviewed",
+            body=reason,
+            notification_type=Notification.Type.MODERATION_ACTION,
+            room=room,
+            message=report.message,
+            action_url=jump_url,
+        )
+        messages.success(request, "Report resolution saved.")
+        return redirect("rooms:moderate_report", report_pk=report.pk)
+
+    return render(
+        request,
+        "rooms/moderate_report.html",
+        {
+            "report": report,
+            "room": room,
+            "form": form,
+            "surrounding_messages": surrounding_messages,
+            "participants": participants,
+            "jump_url": jump_url,
+        },
+    )

@@ -147,7 +147,7 @@ class Event(models.Model):
 
     def clean(self) -> None:
         super().clean()
-        if self.end_time <= self.start_time:
+        if self.start_time and self.end_time and self.end_time <= self.start_time:
             raise ValidationError("Event end time must be after the start time.")
         if self.capacity is not None and self.capacity <= 0:
             raise ValidationError("Capacity must be a positive number.")
