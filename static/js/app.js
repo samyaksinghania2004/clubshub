@@ -176,7 +176,7 @@
         option.className = 'autocomplete-item';
         option.textContent = item.label || item.email || item.username;
         option.addEventListener('click', () => {
-          input.value = item.email || item.username;
+          input.value = item.username || '';
           clearList();
         });
         list.appendChild(option);
