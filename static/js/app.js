@@ -115,16 +115,6 @@
     window.setInterval(pollNotifications, 60000);
   }
 
-  const confirmForms = document.querySelectorAll('form[data-confirm]');
-  confirmForms.forEach((form) => {
-    form.addEventListener('submit', (event) => {
-      const message = form.getAttribute('data-confirm');
-      if (message && !window.confirm(message)) {
-        event.preventDefault();
-      }
-    });
-  });
-
   const closeActionMenus = () => {
     document.querySelectorAll('details.action-menu[open]').forEach((menu) => {
       menu.removeAttribute('open');
@@ -218,6 +208,8 @@
     });
   });
 
+  let pendingConfirmForm = null;
+
   const openModal = (modal, focusId) => {
     if (!modal) return;
     modal.classList.remove('is-hidden');
@@ -233,6 +225,9 @@
   const closeModal = (modal) => {
     if (!modal) return;
     modal.classList.add('is-hidden');
+    if (modal.hasAttribute('data-confirm-modal')) {
+      pendingConfirmForm = null;
+    }
     if (document.querySelectorAll('.modal:not(.is-hidden)').length === 0) {
       document.body.classList.remove('modal-open');
     }
@@ -254,6 +249,45 @@
     closer.addEventListener('click', (event) => {
       const modal = event.target.closest('.modal');
       closeModal(modal);
+    });
+  });
+
+  const confirmModal = document.querySelector('[data-confirm-modal]');
+  const confirmMessage = confirmModal?.querySelector('[data-confirm-message]');
+  const confirmAccept = confirmModal?.querySelector('[data-confirm-accept]');
+  if (confirmAccept && confirmModal) {
+    confirmAccept.addEventListener('click', () => {
+      if (!pendingConfirmForm) {
+        closeModal(confirmModal);
+        return;
+      }
+      pendingConfirmForm.dataset.confirmed = 'true';
+      const formToSubmit = pendingConfirmForm;
+      closeModal(confirmModal);
+      formToSubmit.submit();
+    });
+  }
+
+  const confirmForms = document.querySelectorAll('form[data-confirm]');
+  confirmForms.forEach((form) => {
+    form.addEventListener('submit', (event) => {
+      const message = form.getAttribute('data-confirm');
+      if (!message) return;
+      if (form.dataset.confirmed === 'true') {
+        delete form.dataset.confirmed;
+        return;
+      }
+      if (confirmModal && confirmMessage) {
+        event.preventDefault();
+        confirmMessage.textContent = message;
+        pendingConfirmForm = form;
+        closeActionMenus();
+        openModal(confirmModal);
+        return;
+      }
+      if (!window.confirm(message)) {
+        event.preventDefault();
+      }
     });
   });
 

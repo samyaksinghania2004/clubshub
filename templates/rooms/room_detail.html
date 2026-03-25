@@ -22,7 +22,7 @@
                     View members
                 </button>
                 {% if handle and handle.status == 'approved' %}
-                    <form method="post" action="{% url 'rooms:leave_room' room.pk %}">
+                    <form method="post" action="{% url 'rooms:leave_room' room.pk %}" data-confirm="Leave {{ room.name }}?">
                         {% csrf_token %}
                         <button class="action-menu__item is-danger" type="submit">Leave room</button>
                     </form>

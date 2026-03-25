@@ -97,5 +97,30 @@
     </div>
 </div>
 <div id="toast-root" class="toast-root"></div>
+<div class="modal is-hidden" id="confirm-modal" data-modal data-confirm-modal>
+    <div class="modal__backdrop" data-modal-close></div>
+    <div class="modal__panel">
+        <div class="modal__header">
+            <div>
+                <p class="eyebrow">Confirm action</p>
+                <h3>Are you sure?</h3>
+            </div>
+            <button type="button" class="modal__close button is-dark is-outlined" data-modal-close>
+                Close
+            </button>
+        </div>
+        <div class="modal__body stack-gap">
+            <p data-confirm-message></p>
+            <div class="modal__actions">
+                <button type="button" class="button is-dark is-outlined" data-confirm-cancel data-modal-close>
+                    Cancel
+                </button>
+                <button type="button" class="button is-danger" data-confirm-accept>
+                    Confirm
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 </body>
 </html>
