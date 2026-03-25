@@ -17,8 +17,8 @@
     <header class="app-topbar">
         <div class="app-brand-row">
             {% if request.user.is_authenticated %}
-            <button type="button" class="app-menu-toggle button is-dark is-outlined" data-sidebar-toggle>
-                ☰
+            <button type="button" class="app-menu-toggle button is-dark is-outlined" data-sidebar-toggle aria-label="Toggle sidebar">
+                &#9776;
             </button>
             {% endif %}
             <a class="app-brand" href="{% if request.user.is_authenticated %}{% url 'clubs_events:event_feed' %}{% else %}{% url 'accounts:login' %}{% endif %}">
@@ -30,7 +30,7 @@
             </a>
             {% if request.user.is_authenticated %}
             <form class="app-search" action="{% url 'core:search' %}" method="get">
-                <input class="input" type="search" name="q" placeholder="Search clubs, events, open rooms…">
+                <input class="input" type="search" name="q" placeholder="Search clubs, events, open rooms...">
             </form>
             {% endif %}
         </div>

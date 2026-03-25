@@ -2,6 +2,8 @@
   const html = document.documentElement;
   const sidebar = document.querySelector('[data-app-sidebar]');
   const sidebarToggle = document.querySelector('[data-sidebar-toggle]');
+  const appShell = document.querySelector('.app-shell');
+  const desktopSidebarQuery = window.matchMedia('(min-width: 1025px)');
   const themeToggle = document.querySelector('[data-theme-toggle]');
   const enableAlertsButton = document.querySelector('[data-enable-browser-notifications]');
   const toastRoot = document.getElementById('toast-root');
@@ -26,7 +28,11 @@
 
   if (sidebarToggle && sidebar) {
     sidebarToggle.addEventListener('click', () => {
-      sidebar.classList.toggle('is-open');
+      if (desktopSidebarQuery.matches) {
+        appShell?.classList.toggle('is-sidebar-collapsed');
+      } else {
+        sidebar.classList.toggle('is-open');
+      }
     });
   }
 
