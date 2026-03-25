@@ -186,7 +186,7 @@ class Event(models.Model):
 
     @property
     def is_open_for_registration(self) -> bool:
-        return self.status == self.Status.PUBLISHED and timezone.now() < self.start_time
+        return self.status == self.Status.PUBLISHED and timezone.now() < self.end_time
 
     def seats_remaining(self) -> int | None:
         if self.capacity is None:
