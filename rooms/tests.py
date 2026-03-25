@@ -49,9 +49,14 @@ class RoomPermissionAndInviteTests(TestCase):
         )
         invite = RoomInvite.objects.get(room=room, recipient=self.student)
         self.client.login(username="student", password="StrongPass@123")
-        self.client.get(reverse("rooms:respond_invite", args=[invite.pk, "accept"]))
+        self.assertEqual(
+            self.client.get(reverse("rooms:join_room", args=[room.pk])).status_code,
+            200,
+        )
         resp = self.client.post(reverse("rooms:join_room", args=[room.pk]), {"handle_name": "invitee"})
         self.assertEqual(resp.status_code, 302)
+        invite.refresh_from_db()
+        self.assertEqual(invite.status, RoomInvite.Status.ACCEPTED)
 
     def test_open_room_limit(self):
         self.client.login(username="student", password="StrongPass@123")

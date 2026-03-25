@@ -108,11 +108,16 @@ def _invite_allows_join(room, user):
         return True
     if room.access_type != DiscussionRoom.AccessType.PRIVATE_INVITE_ONLY:
         return True
-    return RoomInvite.objects.filter(
+    invite = RoomInvite.objects.filter(
         room=room,
         recipient=user,
-        status=RoomInvite.Status.ACCEPTED,
-    ).exists()
+        status__in=[RoomInvite.Status.PENDING, RoomInvite.Status.ACCEPTED],
+    ).first()
+    if invite is None:
+        return False
+    if invite.expires_at and invite.expires_at < timezone.now():
+        return False
+    return True
 
 
 @login_required
@@ -121,9 +126,6 @@ def join_room_view(request, pk):
     if request.user.is_globally_banned:
         messages.error(request, "Your account is blocked from room participation.")
         return redirect("rooms:room_list")
-    if not _invite_allows_join(room, request.user):
-        return HttpResponseForbidden("Invite required for this room.")
-
     existing = RoomHandle.objects.filter(room=room, user=request.user).first()
     if existing and existing.status == RoomHandle.Status.EXPELLED:
         messages.error(request, "You cannot rejoin this room.")
@@ -133,6 +135,8 @@ def join_room_view(request, pk):
     if existing and existing.status == RoomHandle.Status.PENDING:
         messages.info(request, "Your join request is still pending approval.")
         return redirect("rooms:room_list")
+    if not _invite_allows_join(room, request.user):
+        return HttpResponseForbidden("Invite required for this room.")
 
     form = JoinRoomForm(
         request.POST or None,
@@ -172,6 +176,14 @@ def join_room_view(request, pk):
                 status=status,
                 approved_at=timezone.now() if status == RoomHandle.Status.APPROVED else None,
             )
+        pending_invite = RoomInvite.objects.filter(
+            room=room,
+            recipient=request.user,
+            status=RoomInvite.Status.PENDING,
+        ).first()
+        if pending_invite:
+            pending_invite.status = RoomInvite.Status.ACCEPTED
+            pending_invite.save(update_fields=["status", "updated_at"])
         if status == RoomHandle.Status.APPROVED:
             messages.success(request, f"You joined {room.name}.")
             return redirect("rooms:room_detail", pk=room.pk)
