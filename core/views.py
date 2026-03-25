@@ -117,7 +117,7 @@ def _get_dm_threads(user):
         "-created_at"
     )
     threads = (
-        DirectMessageThread.objects.filter(participants__user=user)
+        DirectMessageThread.objects.filter(participants=user)
         .distinct()
         .annotate(
             last_message_at=Subquery(last_message.values("created_at")[:1]),
@@ -140,8 +140,8 @@ def _get_dm_threads(user):
 
 def _get_or_create_dm_thread(user, recipient):
     thread = (
-        DirectMessageThread.objects.filter(participants__user=user)
-        .filter(participants__user=recipient)
+        DirectMessageThread.objects.filter(participants=user)
+        .filter(participants=recipient)
         .distinct()
         .first()
     )
@@ -180,7 +180,7 @@ def inbox_view(request):
 @login_required
 def inbox_thread_view(request, thread_pk):
     thread = get_object_or_404(
-        DirectMessageThread.objects.filter(participants__user=request.user),
+        DirectMessageThread.objects.filter(participants=request.user),
         pk=thread_pk,
     )
     participant = DirectMessageParticipant.objects.filter(
