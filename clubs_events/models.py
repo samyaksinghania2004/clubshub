@@ -405,6 +405,7 @@ class ClubChannel(models.Model):
     )
     is_private = models.BooleanField(default=False)
     is_read_only = models.BooleanField(default=False)
+    is_archived = models.BooleanField(default=False)
     event = models.OneToOneField(
         Event,
         on_delete=models.CASCADE,
@@ -431,7 +432,38 @@ class ClubChannel(models.Model):
         ]
 
     def __str__(self) -> str:
-        return f"{self.club.name} · {self.name}"
+        return f"{self.club.name} - {self.name}"
+
+
+class ClubChannelMember(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    channel = models.ForeignKey(
+        ClubChannel, on_delete=models.CASCADE, related_name="memberships"
+    )
+    user = models.ForeignKey(
+        "accounts.User",
+        on_delete=models.CASCADE,
+        related_name="club_channel_memberships",
+    )
+    added_by = models.ForeignKey(
+        "accounts.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="added_channel_memberships",
+    )
+    added_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["-added_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["channel", "user"], name="unique_club_channel_member"
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.channel} -> {self.user}"
 
 
 class ClubMessage(models.Model):

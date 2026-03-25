@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}{{ event.title }} · ClubsHub{% endblock %}
+{% block title %}{{ event.title }} - ClubsHub{% endblock %}
 {% block content %}
 <section class="page-hero">
     <div>
@@ -8,7 +8,7 @@
         <p class="page-subtitle">{{ event.description }}</p>
         <div class="meta-row">
             <span>{{ event.venue }}</span>
-            <span>{{ event.start_time }} → {{ event.end_time }}</span>
+            <span>{{ event.start_time }} to {{ event.end_time }}</span>
             <span>{% if event.capacity %}{{ event.registered_count }}/{{ event.capacity }} registered{% else %}Open capacity{% endif %}</span>
         </div>
     </div>
@@ -24,7 +24,9 @@
             <a class="button is-danger is-light" href="{% url 'clubs_events:event_cancel' event.pk %}">Cancel event</a>
             <a class="button is-dark is-outlined" href="{% url 'clubs_events:attendance_manage' event.pk %}">Attendance</a>
         {% endif %}
-        <a class="button is-link is-light" href="{{ discuss_url }}">Discuss</a>
+        {% if discuss_url %}
+            <a class="button is-link is-light" href="{{ discuss_url }}">Discuss</a>
+        {% endif %}
     </div>
 </section>
 
@@ -35,7 +37,9 @@
                 <div class="tab-row">
                     <h2>Announcements</h2>
                     <div class="tab-actions">
-                        <a class="button is-link is-light" href="{{ discuss_url }}">Discuss</a>
+                        {% if discuss_url %}
+                            <a class="button is-link is-light" href="{{ discuss_url }}">Discuss</a>
+                        {% endif %}
                         {% if can_post_announcement %}
                             <a class="button is-link is-light" href="{% url 'clubs_events:announcement_create' 'event' event.pk %}">Post announcement</a>
                         {% endif %}

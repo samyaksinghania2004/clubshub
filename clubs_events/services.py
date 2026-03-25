@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Optional
+
 from django.utils.text import slugify
 
 from .models import Club, ClubChannel, ClubMessage, Event
@@ -27,20 +29,6 @@ DEFAULT_CHANNELS = [
         "is_private": False,
         "is_read_only": False,
     },
-    {
-        "name": "random",
-        "slug": "random",
-        "channel_type": ClubChannel.ChannelType.RANDOM,
-        "is_private": False,
-        "is_read_only": False,
-    },
-    {
-        "name": "events",
-        "slug": "events",
-        "channel_type": ClubChannel.ChannelType.EVENTS,
-        "is_private": False,
-        "is_read_only": False,
-    },
 ]
 
 
@@ -56,7 +44,7 @@ def _unique_channel_slug(club: Club, base: str) -> str:
 
 def ensure_default_channels(club: Club, actor=None) -> None:
     for channel_data in DEFAULT_CHANNELS:
-        ClubChannel.objects.get_or_create(
+        channel, created = ClubChannel.objects.get_or_create(
             club=club,
             slug=channel_data["slug"],
             defaults={
@@ -67,23 +55,29 @@ def ensure_default_channels(club: Club, actor=None) -> None:
                 "created_by": actor,
             },
         )
+        if not created and channel.is_archived:
+            channel.is_archived = False
+            channel.save(update_fields=["is_archived", "updated_at"])
 
 
-def get_or_create_event_channel(event: Event, actor=None) -> ClubChannel:
+def get_or_create_event_channel(event: Event, actor=None) -> Optional[ClubChannel]:
     ensure_default_channels(event.club, actor=actor)
     slug = f"event-{event.pk.hex[:8]}"
-    channel, created = ClubChannel.objects.get_or_create(
-        club=event.club,
-        event=event,
-        defaults={
-            "name": event.title,
-            "slug": slug,
-            "channel_type": ClubChannel.ChannelType.EVENT,
-            "is_private": False,
-            "is_read_only": False,
-            "created_by": actor,
-        },
-    )
+    channel = ClubChannel.objects.filter(club=event.club, event=event).first()
+    if channel:
+        if channel.is_archived:
+            return None
+    else:
+        channel = ClubChannel.objects.create(
+            club=event.club,
+            event=event,
+            name=event.title,
+            slug=slug,
+            channel_type=ClubChannel.ChannelType.EVENT,
+            is_private=False,
+            is_read_only=False,
+            created_by=actor,
+        )
     update_fields = []
     if channel.name != event.title:
         channel.name = event.title
@@ -106,7 +100,7 @@ def get_or_create_event_channel(event: Event, actor=None) -> ClubChannel:
 def create_welcome_message(club: Club, user) -> None:
     ensure_default_channels(club, actor=None)
     channel = ClubChannel.objects.filter(
-        club=club, channel_type=ClubChannel.ChannelType.WELCOME
+        club=club, channel_type=ClubChannel.ChannelType.WELCOME, is_archived=False
     ).first()
     if not channel:
         return

@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}Events · ClubsHub{% endblock %}
+{% block title %}Events - ClubsHub{% endblock %}
 {% block content %}
 <section class="page-hero">
     <div>
@@ -21,7 +21,7 @@
         <form method="get" class="filter-grid">
         <div>
             <label class="label">Keyword</label>
-            <input class="input" type="text" name="q" value="{{ q }}" maxlength="50" placeholder="Hackathon, workshop, panel…">
+            <input class="input" type="text" name="q" value="{{ q }}" maxlength="50" placeholder="Hackathon, workshop, panel...">
         </div>
         <div>
             <label class="label">Club</label>
@@ -66,7 +66,7 @@
                         </div>
                         <span class="tag is-link is-light">{{ event.get_status_display }}</span>
                     </div>
-                    <p class="muted-text">{{ event.venue }} · {{ event.start_time }} → {{ event.end_time }}</p>
+                    <p class="muted-text">{{ event.venue }} - {{ event.start_time }} to {{ event.end_time }}</p>
                     <p>{{ event.description|truncatechars:200 }}</p>
                     <div class="meta-row">
                         <span>Capacity: {% if event.capacity %}{{ event.registered_count }}/{{ event.capacity }}{% else %}Open{% endif %}</span>
@@ -74,7 +74,9 @@
                     </div>
                     <div class="surface-card__actions">
                         <a class="button is-link" href="{% url 'clubs_events:event_detail' event.pk %}">Open event</a>
-                        <a class="button is-link is-light" href="{{ event.discuss_url }}">Discuss</a>
+                        {% if event.discuss_url %}
+                            <a class="button is-link is-light" href="{{ event.discuss_url }}">Discuss</a>
+                        {% endif %}
                     </div>
                 </article>
             {% endfor %}

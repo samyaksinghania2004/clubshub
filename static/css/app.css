@@ -300,6 +300,72 @@ html[data-theme="light"] .app-sidebar {
   align-items: center;
 }
 
+.action-menu {
+  position: relative;
+}
+
+.action-menu__toggle {
+  min-width: 2.4rem;
+  padding: 0.4rem 0.75rem;
+}
+
+.action-menu__toggle::-webkit-details-marker {
+  display: none;
+}
+
+.action-menu__toggle::marker {
+  content: "";
+}
+
+.action-menu__panel {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  right: 0;
+  min-width: 180px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 0.4rem;
+  display: grid;
+  gap: 0.25rem;
+  z-index: 30;
+}
+
+.action-menu__panel form {
+  margin: 0;
+}
+
+.action-menu__item {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  font-size: 0.95rem;
+  text-decoration: none;
+}
+
+.action-menu__item:hover {
+  background: rgba(110, 168, 254, 0.12);
+  color: var(--text);
+}
+
+.action-menu__item.is-danger {
+  color: var(--danger);
+}
+
+.action-menu__item.is-danger:hover {
+  background: rgba(248, 113, 113, 0.12);
+}
+
+.action-menu--compact .action-menu__panel {
+  min-width: 160px;
+}
+
 .panel-card,
 .surface-card,
 .notification-card,
@@ -329,6 +395,15 @@ html[data-theme="light"] .app-sidebar {
 .surface-card__header h1,
 .notification-card h2 {
   margin: 0;
+  color: var(--text);
+}
+
+.club-card__title {
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.club-card__title a {
   color: var(--text);
 }
 

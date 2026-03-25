@@ -27,12 +27,22 @@ from rooms.models import DiscussionRoom, RoomHandle
 from .forms import (
     AnnouncementForm,
     ClubChannelForm,
+    ClubChannelMemberForm,
     ClubForm,
     ClubMessageForm,
     EventCancellationForm,
     EventForm,
 )
-from .models import Announcement, Club, ClubChannel, ClubMembership, ClubMessage, Event, Registration
+from .models import (
+    Announcement,
+    Club,
+    ClubChannel,
+    ClubChannelMember,
+    ClubMembership,
+    ClubMessage,
+    Event,
+    Registration,
+)
 from .services import (
     create_custom_channel,
     create_welcome_message,
@@ -110,10 +120,13 @@ def event_feed_view(request):
     events = list(events)
     for event in events:
         channel = get_or_create_event_channel(event, actor=request.user)
-        event.discuss_url = reverse(
-            "clubs_events:club_channel",
-            kwargs={"pk": event.club_id, "slug": channel.slug},
-        )
+        if channel:
+            event.discuss_url = reverse(
+                "clubs_events:club_channel",
+                kwargs={"pk": event.club_id, "slug": channel.slug},
+            )
+        else:
+            event.discuss_url = None
 
     return render(
         request,
@@ -177,20 +190,35 @@ def club_detail_view(request, pk, slug=None):
     is_secretary = bool(
         membership and membership.local_role == ClubMembership.LocalRole.SECRETARY
     )
+    is_admin = is_global_admin(request.user)
+    can_manage_channels = is_admin or is_coordinator
     ensure_default_channels(club, actor=request.user)
     for event in club.events.filter(is_archived=False):
         get_or_create_event_channel(event, actor=request.user)
 
-    channels_qs = ClubChannel.objects.filter(club=club).select_related("event")
+    allowed_private_channel_ids = set()
+    if not can_manage_channels:
+        allowed_private_channel_ids = set(
+            ClubChannelMember.objects.filter(
+                channel__club=club, user=request.user
+            ).values_list("channel_id", flat=True)
+        )
+
+    channels_qs = ClubChannel.objects.filter(club=club, is_archived=False).select_related(
+        "event"
+    )
     channels = []
     for channel in channels_qs:
-        if channel.is_private and not (is_member or is_global_admin(request.user)):
-            continue
+        if channel.is_private:
+            if not is_member and not can_manage_channels:
+                continue
+            if not can_manage_channels and channel.id not in allowed_private_channel_ids:
+                continue
         if (
             channel.channel_type == ClubChannel.ChannelType.EVENT
             and channel.event
             and channel.event.status != Event.Status.PUBLISHED
-            and not (is_member or is_global_admin(request.user))
+            and not (is_member or is_admin)
         ):
             continue
         channels.append(channel)
@@ -210,6 +238,15 @@ def club_detail_view(request, pk, slug=None):
     if active_channel is None:
         raise Http404
 
+    default_channel_types = {
+        ClubChannel.ChannelType.ANNOUNCEMENTS,
+        ClubChannel.ChannelType.WELCOME,
+        ClubChannel.ChannelType.MAIN,
+    }
+    can_delete_channel = can_manage_channels and (
+        active_channel.channel_type not in default_channel_types
+    )
+
     channel_order = {
         ClubChannel.ChannelType.ANNOUNCEMENTS: 0,
         ClubChannel.ChannelType.WELCOME: 1,
@@ -228,14 +265,27 @@ def club_detail_view(request, pk, slug=None):
     )
 
     can_create_channel = is_global_admin(request.user) or is_coordinator
+    can_manage_members = is_admin or is_coordinator
+    show_members = is_member or is_admin
+
+    def can_access_channel(channel):
+        if not channel.is_private:
+            return True
+        if can_manage_channels:
+            return True
+        if not is_member:
+            return False
+        return channel.id in allowed_private_channel_ids
 
     def can_post_to_channel():
+        if not can_access_channel(active_channel):
+            return False
         if not (is_member or is_global_admin(request.user)):
             return False
         if active_channel.channel_type == ClubChannel.ChannelType.WELCOME:
             return False
         if active_channel.channel_type == ClubChannel.ChannelType.ANNOUNCEMENTS:
-            return is_global_admin(request.user) or is_coordinator or is_secretary
+            return is_admin or is_coordinator or is_secretary
         if active_channel.is_read_only:
             return False
         return True
@@ -254,6 +304,13 @@ def club_detail_view(request, pk, slug=None):
             return redirect("clubs_events:club_channel", pk=club.pk, slug=active_channel.slug)
 
     messages_qs = active_channel.messages.select_related("author")
+    channel_member_form = None
+    channel_members = None
+    if active_channel.is_private and can_manage_channels:
+        channel_member_form = ClubChannelMemberForm(club=club)
+        channel_members = active_channel.memberships.select_related("user").order_by(
+            "user__username"
+        )
 
     return render(
         request,
@@ -271,7 +328,12 @@ def club_detail_view(request, pk, slug=None):
             "can_create_channel": can_create_channel,
             "can_post_messages": can_post_to_channel(),
             "can_manage_club": can_manage_club(request.user, club),
+            "can_manage_members": can_manage_members,
+            "can_delete_channel": can_delete_channel,
             "can_create_event_for_club": can_create_event(request.user, club),
+            "channel_member_form": channel_member_form,
+            "channel_members": channel_members,
+            "show_members": show_members,
         },
     )
 
@@ -309,6 +371,7 @@ def club_leave_view(request, pk):
     membership.local_role = ClubMembership.LocalRole.MEMBER
     membership.left_at = timezone.now()
     membership.save(update_fields=["status", "local_role", "left_at", "updated_at"])
+    ClubChannelMember.objects.filter(channel__club=club, user=request.user).delete()
     messages.info(request, f"You left {club.name}. If you rejoin later, you will come back as a normal member.")
     log_audit(
         action_type=AuditLogEntry.ActionType.CLUB_LEFT,
@@ -348,6 +411,78 @@ def club_channel_create_view(request, pk):
 
 
 @login_required
+def club_channel_add_member_view(request, pk, slug):
+    club = get_object_or_404(Club, pk=pk)
+    channel = get_object_or_404(
+        ClubChannel, club=club, slug=slug, is_private=True, is_archived=False
+    )
+    if not can_manage_club(request.user, club):
+        return HttpResponseForbidden("Not allowed")
+    form = ClubChannelMemberForm(request.POST or None, club=club)
+    if request.method == "POST":
+        if form.is_valid():
+            user = form.cleaned_data["user"]
+            member, created = ClubChannelMember.objects.get_or_create(
+                channel=channel,
+                user=user,
+                defaults={"added_by": request.user},
+            )
+            if created:
+                messages.success(
+                    request, f"{user.display_name} now has access to #{channel.name}."
+                )
+            else:
+                messages.info(
+                    request, f"{user.display_name} already has access to #{channel.name}."
+                )
+        else:
+            for error_list in form.errors.values():
+                for error in error_list:
+                    messages.error(request, error)
+    return redirect("clubs_events:club_channel", pk=club.pk, slug=channel.slug)
+
+
+@login_required
+def club_channel_remove_member_view(request, pk, slug, user_id):
+    club = get_object_or_404(Club, pk=pk)
+    channel = get_object_or_404(
+        ClubChannel, club=club, slug=slug, is_private=True, is_archived=False
+    )
+    if not can_manage_club(request.user, club):
+        return HttpResponseForbidden("Not allowed")
+    membership = get_object_or_404(ClubChannelMember, channel=channel, user_id=user_id)
+    if request.method == "POST":
+        membership.delete()
+        messages.success(
+            request, f"{membership.user.display_name} removed from #{channel.name}."
+        )
+    return redirect("clubs_events:club_channel", pk=club.pk, slug=channel.slug)
+
+
+@login_required
+def club_channel_delete_view(request, pk, slug):
+    club = get_object_or_404(Club, pk=pk)
+    channel = get_object_or_404(ClubChannel, club=club, slug=slug, is_archived=False)
+    if not can_manage_club(request.user, club):
+        return HttpResponseForbidden("Not allowed")
+    if channel.channel_type in [
+        ClubChannel.ChannelType.ANNOUNCEMENTS,
+        ClubChannel.ChannelType.WELCOME,
+        ClubChannel.ChannelType.MAIN,
+    ]:
+        messages.error(request, "Default channels cannot be deleted.")
+        return redirect("clubs_events:club_channel", pk=club.pk, slug=channel.slug)
+    if request.method == "POST":
+        channel_name = channel.name
+        channel.is_archived = True
+        channel.save(update_fields=["is_archived", "updated_at"])
+        ClubChannelMember.objects.filter(channel=channel).delete()
+        messages.success(request, f"#{channel_name} deleted.")
+        return redirect("clubs_events:club_detail", pk=club.pk)
+    return redirect("clubs_events:club_channel", pk=club.pk, slug=channel.slug)
+
+
+@login_required
 def assign_secretary_view(request, pk, user_id):
     club = get_object_or_404(Club, pk=pk)
     target_membership = get_object_or_404(ClubMembership, club=club, user_id=user_id)
@@ -380,6 +515,34 @@ def revoke_secretary_view(request, pk, user_id):
         acting_user=request.user,
         target_user=target_membership.user,
         details={"role": "secretary", "club": str(club.id)},
+    )
+    return redirect("clubs_events:club_detail", pk=club.pk)
+
+
+@login_required
+def club_member_remove_view(request, pk, user_id):
+    club = get_object_or_404(Club, pk=pk)
+    if not can_manage_club(request.user, club):
+        return HttpResponseForbidden("Not allowed")
+    if request.method != "POST":
+        return redirect("clubs_events:club_detail", pk=club.pk)
+    if request.user.id == user_id:
+        messages.error(request, "Use the leave action to remove yourself.")
+        return redirect("clubs_events:club_detail", pk=club.pk)
+    target_membership = get_object_or_404(ClubMembership, club=club, user_id=user_id)
+    target_membership.status = ClubMembership.Status.REMOVED
+    target_membership.local_role = ClubMembership.LocalRole.MEMBER
+    target_membership.left_at = timezone.now()
+    target_membership.save(update_fields=["status", "local_role", "left_at", "updated_at"])
+    ClubChannelMember.objects.filter(channel__club=club, user_id=user_id).delete()
+    messages.success(
+        request, f"{target_membership.user.display_name} has been removed from the club."
+    )
+    log_audit(
+        action_type=AuditLogEntry.ActionType.CLUB_MEMBER_REMOVED,
+        acting_user=request.user,
+        target_user=target_membership.user,
+        details={"club": str(club.id)},
     )
     return redirect("clubs_events:club_detail", pk=club.pk)
 
@@ -426,10 +589,12 @@ def event_detail_view(request, pk):
     registration = request.user.registrations.filter(event=event).first()
     announcements = event.announcements.filter(is_active=True)[:10]
     event_channel = get_or_create_event_channel(event, actor=request.user)
-    discuss_url = reverse(
-        "clubs_events:club_channel",
-        kwargs={"pk": event.club.pk, "slug": event_channel.slug},
-    )
+    discuss_url = None
+    if event_channel:
+        discuss_url = reverse(
+            "clubs_events:club_channel",
+            kwargs={"pk": event.club.pk, "slug": event_channel.slug},
+        )
     registrations = None
     if can_manage_event(request.user, event):
         registrations = event.registrations.select_related("user").all()

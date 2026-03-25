@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}Clubs · ClubsHub{% endblock %}
+{% block title %}Clubs - ClubsHub{% endblock %}
 {% block content %}
 <section class="page-hero">
     <div>
@@ -29,7 +29,9 @@
             <div class="surface-card__header">
                 <div>
                     <p class="eyebrow">{{ club.category }}</p>
-                    <h2><a href="{% url 'clubs_events:club_detail' club.pk %}">{{ club.name }}</a></h2>
+                    <h2 class="club-card__title">
+                        <a href="{% url 'clubs_events:club_detail' club.pk %}">{{ club.name }}</a>
+                    </h2>
                 </div>
                 {% if club.id in manageable_club_ids %}
                     <span class="tag is-link is-light">Coordinator access</span>
@@ -37,19 +39,13 @@
                     <span class="tag is-dark is-light">Member</span>
                 {% endif %}
             </div>
-            <p>{{ club.description|truncatechars:180 }}</p>
             <div class="meta-row">
                 <span>{{ club.follower_count }} members</span>
                 <span>{{ club.contact_email }}</span>
             </div>
             <div class="surface-card__actions">
                 <a class="button is-dark is-outlined" href="{% url 'clubs_events:club_detail' club.pk %}">View club</a>
-                {% if club.id in active_membership_ids %}
-                    <form method="post" action="{% url 'clubs_events:club_leave' club.pk %}">
-                        {% csrf_token %}
-                        <button class="button is-danger is-light" type="submit">Leave</button>
-                    </form>
-                {% else %}
+                {% if club.id not in active_membership_ids %}
                     <form method="post" action="{% url 'clubs_events:club_join' club.pk %}">
                         {% csrf_token %}
                         <button class="button is-link" type="submit">Join</button>

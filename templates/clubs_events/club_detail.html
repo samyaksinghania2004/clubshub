@@ -10,24 +10,35 @@
     <div class="hero-actions">
         {% if membership and membership.status == 'active' %}
             <span class="tag is-link is-light">You are {{ membership.get_local_role_display }}</span>
-            <form method="post" action="{% url 'clubs_events:club_leave' club.pk %}">
-                {% csrf_token %}
-                <button class="button is-danger is-light" type="submit">Leave club</button>
-            </form>
         {% else %}
             <form method="post" action="{% url 'clubs_events:club_join' club.pk %}">
                 {% csrf_token %}
                 <button class="button is-link" type="submit">Join club</button>
             </form>
         {% endif %}
-        {% if can_manage_club %}
-            <a class="button is-dark is-outlined" href="{% url 'clubs_events:club_edit' club.pk %}">Edit club</a>
-        {% endif %}
-        {% if can_create_event_for_club %}
-            <a class="button is-dark is-outlined" href="{% url 'clubs_events:event_create' %}?club={{ club.pk }}">New event</a>
-        {% endif %}
-        {% if can_create_channel %}
-            <a class="button is-dark is-outlined" href="{% url 'clubs_events:club_channel_create' club.pk %}">New channel</a>
+        {% if can_manage_club or can_create_event_for_club or can_create_channel or membership %}
+            <details class="action-menu">
+                <summary class="action-menu__toggle button is-dark is-outlined" aria-label="Club options">
+                    ...
+                </summary>
+                <div class="action-menu__panel">
+                    {% if can_manage_club %}
+                        <a class="action-menu__item" href="{% url 'clubs_events:club_edit' club.pk %}">Edit club</a>
+                    {% endif %}
+                    {% if can_create_event_for_club %}
+                        <a class="action-menu__item" href="{% url 'clubs_events:event_create' %}?club={{ club.pk }}">New event</a>
+                    {% endif %}
+                    {% if can_create_channel %}
+                        <a class="action-menu__item" href="{% url 'clubs_events:club_channel_create' club.pk %}">New channel</a>
+                    {% endif %}
+                    {% if membership and membership.status == 'active' %}
+                        <form method="post" action="{% url 'clubs_events:club_leave' club.pk %}" data-confirm="Leave {{ club.name }}?">
+                            {% csrf_token %}
+                            <button class="action-menu__item is-danger" type="submit">Leave club</button>
+                        </form>
+                    {% endif %}
+                </div>
+            </details>
         {% endif %}
     </div>
 </section>
@@ -45,6 +56,19 @@
                     <p class="muted-text">Private channel for club members.</p>
                 {% endif %}
             </div>
+            {% if can_delete_channel %}
+                <details class="action-menu">
+                    <summary class="action-menu__toggle button is-dark is-outlined" aria-label="Channel options">
+                        ...
+                    </summary>
+                    <div class="action-menu__panel">
+                        <form method="post" action="{% url 'clubs_events:club_channel_delete' club.pk active_channel.slug %}" data-confirm="Delete #{{ active_channel.name }}?">
+                            {% csrf_token %}
+                            <button class="action-menu__item is-danger" type="submit">Delete channel</button>
+                        </form>
+                    </div>
+                </details>
+            {% endif %}
             {% if not is_member %}
                 <div class="club-chat-cta">
                     <p class="muted-text">Join the club to send messages. You can keep reading for now.</p>
@@ -135,7 +159,35 @@
                 {% endfor %}
             </ul>
         </div>
-        {% if can_manage_club %}
+        {% if channel_member_form %}
+        <div class="channel-group">
+            <p class="eyebrow">Private access</p>
+            <form method="post" action="{% url 'clubs_events:club_channel_add_member' club.pk active_channel.slug %}" class="stack-gap">
+                {% csrf_token %}
+                {{ channel_member_form.identifier }}
+                <button class="button is-link is-light" type="submit">Add member</button>
+            </form>
+            <div class="member-list">
+                {% for access in channel_members %}
+                    <div class="member-row">
+                        <div>
+                            <strong>{{ access.user.display_name }}</strong>
+                            <p class="muted-text">{{ access.user.email }}</p>
+                        </div>
+                        <div class="member-actions">
+                            <form method="post" action="{% url 'clubs_events:club_channel_remove_member' club.pk active_channel.slug access.user_id %}" data-confirm="Remove {{ access.user.display_name }} from #{{ active_channel.name }}?">
+                                {% csrf_token %}
+                                <button class="button is-small is-danger is-light" type="submit">Remove</button>
+                            </form>
+                        </div>
+                    </div>
+                {% empty %}
+                    <p class="muted-text">No members added yet.</p>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        {% if show_members %}
         <div class="channel-group">
             <p class="eyebrow">Members</p>
             <div class="member-list">
@@ -147,11 +199,26 @@
                         </div>
                         <div class="member-actions">
                             <span class="tag is-link is-light">{{ m.get_local_role_display }}</span>
-                            {% if m.local_role == 'member' %}
-                                <a class="button is-small is-dark is-outlined" href="{% url 'clubs_events:assign_secretary' club.pk m.user_id %}">Make secretary</a>
-                            {% endif %}
-                            {% if m.local_role == 'secretary' %}
-                                <a class="button is-small is-danger is-light" href="{% url 'clubs_events:revoke_secretary' club.pk m.user_id %}">Revoke secretary</a>
+                            {% if can_manage_members %}
+                                <details class="action-menu action-menu--compact">
+                                    <summary class="action-menu__toggle button is-dark is-outlined" aria-label="Member options">
+                                        ...
+                                    </summary>
+                                    <div class="action-menu__panel">
+                                        {% if m.local_role == 'member' %}
+                                            <a class="action-menu__item" href="{% url 'clubs_events:assign_secretary' club.pk m.user_id %}">Make secretary</a>
+                                        {% endif %}
+                                        {% if m.local_role == 'secretary' %}
+                                            <a class="action-menu__item" href="{% url 'clubs_events:revoke_secretary' club.pk m.user_id %}">Revoke secretary</a>
+                                        {% endif %}
+                                        {% if m.user_id != request.user.id %}
+                                            <form method="post" action="{% url 'clubs_events:club_member_remove' club.pk m.user_id %}" data-confirm="Remove {{ m.user.display_name }} from {{ club.name }}?">
+                                                {% csrf_token %}
+                                                <button class="action-menu__item is-danger" type="submit">Remove from club</button>
+                                            </form>
+                                        {% endif %}
+                                    </div>
+                                </details>
                             {% endif %}
                         </div>
                     </div>
