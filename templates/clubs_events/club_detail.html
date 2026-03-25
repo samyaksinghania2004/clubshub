@@ -56,12 +56,27 @@
                     <p class="muted-text">Private channel for club members.</p>
                 {% endif %}
             </div>
-            {% if can_delete_channel %}
+            {% if show_channel_menu %}
                 <details class="action-menu">
                     <summary class="action-menu__toggle button is-dark is-outlined" aria-label="Channel options">
                         ...
                     </summary>
                     <div class="action-menu__panel">
+                        {% if can_view_private_members %}
+                            <button class="action-menu__item" type="button" data-modal-target="channel-members-modal">
+                                View channel members
+                            </button>
+                        {% endif %}
+                        {% if can_add_private_members %}
+                            <button
+                                class="action-menu__item"
+                                type="button"
+                                data-modal-target="channel-members-modal"
+                                data-modal-focus="id_identifier"
+                            >
+                                Add members
+                            </button>
+                        {% endif %}
                         <form method="post" action="{% url 'clubs_events:club_channel_delete' club.pk active_channel.slug %}" data-confirm="Delete #{{ active_channel.name }}?">
                             {% csrf_token %}
                             <button class="action-menu__item is-danger" type="submit">Delete channel</button>
@@ -159,34 +174,6 @@
                 {% endfor %}
             </ul>
         </div>
-        {% if channel_member_form %}
-        <div class="channel-group">
-            <p class="eyebrow">Private access</p>
-            <form method="post" action="{% url 'clubs_events:club_channel_add_member' club.pk active_channel.slug %}" class="stack-gap">
-                {% csrf_token %}
-                {{ channel_member_form.identifier }}
-                <button class="button is-link is-light" type="submit">Add member</button>
-            </form>
-            <div class="member-list">
-                {% for access in channel_members %}
-                    <div class="member-row">
-                        <div>
-                            <strong>{{ access.user.display_name }}</strong>
-                            <p class="muted-text">{{ access.user.email }}</p>
-                        </div>
-                        <div class="member-actions">
-                            <form method="post" action="{% url 'clubs_events:club_channel_remove_member' club.pk active_channel.slug access.user_id %}" data-confirm="Remove {{ access.user.display_name }} from #{{ active_channel.name }}?">
-                                {% csrf_token %}
-                                <button class="button is-small is-danger is-light" type="submit">Remove</button>
-                            </form>
-                        </div>
-                    </div>
-                {% empty %}
-                    <p class="muted-text">No members added yet.</p>
-                {% endfor %}
-            </div>
-        </div>
-        {% endif %}
         {% if show_members %}
         <div class="channel-group">
             <p class="eyebrow">Members</p>
@@ -199,7 +186,7 @@
                         </div>
                         <div class="member-actions">
                             <span class="tag is-link is-light">{{ m.get_local_role_display }}</span>
-                            {% if can_manage_members %}
+                            {% if can_manage_members and m.user_id != request.user.id %}
                                 <details class="action-menu action-menu--compact">
                                     <summary class="action-menu__toggle button is-dark is-outlined" aria-label="Member options">
                                         ...
@@ -211,12 +198,10 @@
                                         {% if m.local_role == 'secretary' %}
                                             <a class="action-menu__item" href="{% url 'clubs_events:revoke_secretary' club.pk m.user_id %}">Revoke secretary</a>
                                         {% endif %}
-                                        {% if m.user_id != request.user.id %}
-                                            <form method="post" action="{% url 'clubs_events:club_member_remove' club.pk m.user_id %}" data-confirm="Remove {{ m.user.display_name }} from {{ club.name }}?">
-                                                {% csrf_token %}
-                                                <button class="action-menu__item is-danger" type="submit">Remove from club</button>
-                                            </form>
-                                        {% endif %}
+                                        <form method="post" action="{% url 'clubs_events:club_member_remove' club.pk m.user_id %}" data-confirm="Remove {{ m.user.display_name }} from {{ club.name }}?">
+                                            {% csrf_token %}
+                                            <button class="action-menu__item is-danger" type="submit">Remove from club</button>
+                                        </form>
                                     </div>
                                 </details>
                             {% endif %}
@@ -230,4 +215,49 @@
         {% endif %}
     </aside>
 </div>
+{% if can_view_private_members %}
+<div class="modal is-hidden" id="channel-members-modal" data-modal>
+    <div class="modal__backdrop" data-modal-close></div>
+    <div class="modal__panel">
+        <div class="modal__header">
+            <div>
+                <p class="eyebrow">Private channel</p>
+                <h3>Channel members</h3>
+            </div>
+            <button type="button" class="modal__close button is-dark is-outlined" data-modal-close>
+                Close
+            </button>
+        </div>
+        <div class="modal__body stack-gap">
+            {% if can_add_private_members %}
+            <form method="post" action="{% url 'clubs_events:club_channel_add_member' club.pk active_channel.slug %}" class="stack-gap">
+                {% csrf_token %}
+                {{ channel_member_form.identifier }}
+                <button class="button is-link is-light" type="submit">Add member</button>
+            </form>
+            {% endif %}
+            <div class="member-list">
+                {% for access in channel_members %}
+                    <div class="member-row">
+                        <div>
+                            <strong>{{ access.user.display_name }}</strong>
+                            <p class="muted-text">{{ access.user.email }}</p>
+                        </div>
+                        {% if can_add_private_members %}
+                            <div class="member-actions">
+                                <form method="post" action="{% url 'clubs_events:club_channel_remove_member' club.pk active_channel.slug access.user_id %}" data-confirm="Remove {{ access.user.display_name }} from #{{ active_channel.name }}?">
+                                    {% csrf_token %}
+                                    <button class="button is-small is-danger is-light" type="submit">Remove</button>
+                                </form>
+                            </div>
+                        {% endif %}
+                    </div>
+                {% empty %}
+                    <p class="muted-text">No members added yet.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 {% endblock %}

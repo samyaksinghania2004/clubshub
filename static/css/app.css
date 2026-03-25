@@ -366,6 +366,55 @@ html[data-theme="light"] .app-sidebar {
   min-width: 160px;
 }
 
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal.is-hidden {
+  display: none;
+}
+
+.modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 17, 31, 0.65);
+}
+
+.modal__panel {
+  position: relative;
+  width: min(520px, 92vw);
+  max-height: 80vh;
+  overflow: auto;
+  padding: 1.2rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 1rem;
+}
+
+.modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.modal__body {
+  display: grid;
+  gap: 1rem;
+}
+
+body.modal-open {
+  overflow: hidden;
+}
+
 .panel-card,
 .surface-card,
 .notification-card,

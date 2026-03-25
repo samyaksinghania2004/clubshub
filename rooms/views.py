@@ -67,7 +67,7 @@ def room_create_view(request):
         )
         return redirect("rooms:room_list")
 
-    form = DiscussionRoomForm(request.POST or None)
+    form = DiscussionRoomForm(request.POST or None, show_archive=False)
     if request.method == "POST" and form.is_valid():
         room = form.save(commit=False)
         room.room_type = DiscussionRoom.RoomType.TOPIC
@@ -75,6 +75,14 @@ def room_create_view(request):
         room.event = None
         room.created_by = request.user
         room.save()
+        handle_name = _unique_handle_name(room, request.user)
+        RoomHandle.objects.create(
+            room=room,
+            user=request.user,
+            handle_name=handle_name,
+            status=RoomHandle.Status.APPROVED,
+            approved_at=timezone.now(),
+        )
         messages.success(request, "Open room created.")
         log_audit(
             action_type=AuditLogEntry.ActionType.ROOM_CREATED,
@@ -90,7 +98,7 @@ def room_edit_view(request, pk):
     room = get_object_or_404(DiscussionRoom.objects.select_related("club", "event"), pk=pk)
     if not can_manage_room(request.user, room):
         raise Http404
-    form = DiscussionRoomForm(request.POST or None, instance=room)
+    form = DiscussionRoomForm(request.POST or None, instance=room, show_archive=True)
     if request.method == "POST" and form.is_valid():
         room = form.save()
         messages.success(request, "Room updated.")
@@ -104,6 +112,8 @@ def room_edit_view(request, pk):
 
 
 def _invite_allows_join(room, user):
+    if room.created_by_id == user.id:
+        return True
     if room.access_type != DiscussionRoom.AccessType.PRIVATE_INVITE_ONLY:
         return True
     return RoomInvite.objects.filter(
@@ -111,6 +121,18 @@ def _invite_allows_join(room, user):
         recipient=user,
         status=RoomInvite.Status.ACCEPTED,
     ).exists()
+
+
+def _unique_handle_name(room, user):
+    base = (user.username or "member").strip()[:24] or "member"
+    candidate = base
+    counter = 2
+    while RoomHandle.objects.filter(room=room, handle_name__iexact=candidate).exists():
+        suffix = f"-{counter}"
+        trimmed = base[: max(0, 24 - len(suffix))]
+        candidate = f"{trimmed}{suffix}"
+        counter += 1
+    return candidate
 
 
 @login_required
@@ -267,27 +289,32 @@ def invite_user_view(request, pk):
     if room.access_type != DiscussionRoom.AccessType.PRIVATE_INVITE_ONLY:
         return HttpResponseForbidden("Invites are only available for private rooms.")
     form = RoomInviteForm(request.POST or None, room=room, inviter=request.user)
-    if request.method == "POST" and form.is_valid():
-        invite, _ = RoomInvite.objects.update_or_create(
-            room=room,
-            recipient=form.cleaned_data["recipient"],
-            defaults={"status": RoomInvite.Status.PENDING, "invited_by": request.user},
-        )
-        create_notification(
-            user=invite.recipient,
-            text=f"Invite to {room.name}",
-            body=f"{request.user.display_name} invited you to join {room.name}. Open this notification to review the room.",
-            notification_type=Notification.Type.INVITE,
-            room=room,
-            action_url=reverse("rooms:join_room", args=[room.pk]),
-        )
-        log_audit(
-            action_type=AuditLogEntry.ActionType.ROOM_INVITE_CREATED,
-            acting_user=request.user,
-            room=room,
-            target_user=invite.recipient,
-        )
-        messages.success(request, f"Invite sent to {invite.recipient.display_name}.")
+    if request.method == "POST":
+        if form.is_valid():
+            invite, _ = RoomInvite.objects.update_or_create(
+                room=room,
+                recipient=form.cleaned_data["recipient"],
+                defaults={"status": RoomInvite.Status.PENDING, "invited_by": request.user},
+            )
+            create_notification(
+                user=invite.recipient,
+                text=f"Invite to {room.name}",
+                body=f"{request.user.display_name} invited you to join {room.name}. Open this notification to review the room.",
+                notification_type=Notification.Type.INVITE,
+                room=room,
+                action_url=reverse("rooms:join_room", args=[room.pk]),
+            )
+            log_audit(
+                action_type=AuditLogEntry.ActionType.ROOM_INVITE_CREATED,
+                acting_user=request.user,
+                room=room,
+                target_user=invite.recipient,
+            )
+            messages.success(request, f"Invite sent to {invite.recipient.display_name}.")
+        else:
+            for error_list in form.errors.values():
+                for error in error_list:
+                    messages.error(request, error)
     return redirect("rooms:room_detail", pk=room.pk)
 
 

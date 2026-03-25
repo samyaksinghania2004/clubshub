@@ -125,6 +125,53 @@
     });
   });
 
+  const openModal = (modal, focusId) => {
+    if (!modal) return;
+    modal.classList.remove('is-hidden');
+    document.body.classList.add('modal-open');
+    if (focusId) {
+      const focusTarget = modal.querySelector(`#${focusId}`);
+      if (focusTarget) {
+        window.setTimeout(() => focusTarget.focus(), 0);
+      }
+    }
+  };
+
+  const closeModal = (modal) => {
+    if (!modal) return;
+    modal.classList.add('is-hidden');
+    if (document.querySelectorAll('.modal:not(.is-hidden)').length === 0) {
+      document.body.classList.remove('modal-open');
+    }
+  };
+
+  const modalTriggers = document.querySelectorAll('[data-modal-target]');
+  modalTriggers.forEach((trigger) => {
+    trigger.addEventListener('click', () => {
+      const target = trigger.getAttribute('data-modal-target');
+      const focusId = trigger.getAttribute('data-modal-focus');
+      if (!target) return;
+      const modal = document.getElementById(target);
+      openModal(modal, focusId);
+    });
+  });
+
+  const modalCloseTargets = document.querySelectorAll('[data-modal-close]');
+  modalCloseTargets.forEach((closer) => {
+    closer.addEventListener('click', (event) => {
+      const modal = event.target.closest('.modal');
+      closeModal(modal);
+    });
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    const openModalEl = document.querySelector('.modal:not(.is-hidden)');
+    if (openModalEl) {
+      closeModal(openModalEl);
+    }
+  });
+
   const focused = document.querySelector('.chat-message.is-focused');
   if (focused) {
     focused.scrollIntoView({ block: 'center', behavior: 'smooth' });

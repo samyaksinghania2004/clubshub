@@ -246,6 +246,7 @@ def club_detail_view(request, pk, slug=None):
     can_delete_channel = can_manage_channels and (
         active_channel.channel_type not in default_channel_types
     )
+    show_channel_menu = can_delete_channel
 
     channel_order = {
         ClubChannel.ChannelType.ANNOUNCEMENTS: 0,
@@ -304,13 +305,18 @@ def club_detail_view(request, pk, slug=None):
             return redirect("clubs_events:club_channel", pk=club.pk, slug=active_channel.slug)
 
     messages_qs = active_channel.messages.select_related("author")
+    can_view_private_members = active_channel.is_private and can_access_channel(active_channel)
+    can_add_private_members = active_channel.is_private and can_manage_channels
+    if can_view_private_members:
+        show_channel_menu = True
     channel_member_form = None
     channel_members = None
-    if active_channel.is_private and can_manage_channels:
-        channel_member_form = ClubChannelMemberForm(club=club)
+    if can_view_private_members:
         channel_members = active_channel.memberships.select_related("user").order_by(
             "user__username"
         )
+    if can_add_private_members:
+        channel_member_form = ClubChannelMemberForm(club=club)
 
     return render(
         request,
@@ -334,6 +340,9 @@ def club_detail_view(request, pk, slug=None):
             "channel_member_form": channel_member_form,
             "channel_members": channel_members,
             "show_members": show_members,
+            "can_view_private_members": can_view_private_members,
+            "can_add_private_members": can_add_private_members,
+            "show_channel_menu": show_channel_menu,
         },
     )
 

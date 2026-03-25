@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from django import forms
+from django.db.models import Q
 
 from accounts.models import User
 
@@ -17,12 +18,14 @@ class DiscussionRoomForm(forms.ModelForm):
             "is_archived",
         ]
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, show_archive=True, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["access_type"].choices = [
             (DiscussionRoom.AccessType.PUBLIC, "Public"),
             (DiscussionRoom.AccessType.PRIVATE_INVITE_ONLY, "Private (invite only)"),
         ]
+        if not show_archive:
+            self.fields.pop("is_archived", None)
 
 
 class JoinRoomForm(forms.Form):
@@ -45,23 +48,63 @@ class JoinRoomForm(forms.Form):
 
 
 class RoomInviteForm(forms.Form):
-    recipient = forms.ModelChoiceField(queryset=User.objects.none())
+    identifier = forms.CharField(
+        max_length=150,
+        label="Search by username or email",
+        widget=forms.TextInput(
+            attrs={"class": "input", "placeholder": "username or email"}
+        ),
+    )
 
     def __init__(self, *args, room=None, inviter=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.room = room
-        qs = User.objects.all()
-        if room:
-            existing_ids = room.room_handles.filter(
+        self.inviter = inviter
+
+    def clean(self):
+        cleaned = super().clean()
+        identifier = (cleaned.get("identifier") or "").strip()
+        if not identifier:
+            raise forms.ValidationError("Enter a username or email.")
+        user = None
+        if "@" in identifier:
+            user = User.objects.filter(email__iexact=identifier).first()
+            if user is None:
+                matches = list(User.objects.filter(email__icontains=identifier)[:2])
+                if len(matches) == 1:
+                    user = matches[0]
+                elif matches:
+                    raise forms.ValidationError(
+                        "Multiple users match. Use the full email address."
+                    )
+        else:
+            user = User.objects.filter(username__iexact=identifier).first()
+            if user is None:
+                matches = list(
+                    User.objects.filter(
+                        Q(username__icontains=identifier)
+                        | Q(first_name__icontains=identifier)
+                        | Q(last_name__icontains=identifier)
+                    )[:2]
+                )
+                if len(matches) == 1:
+                    user = matches[0]
+                elif matches:
+                    raise forms.ValidationError(
+                        "Multiple users match. Use the full username or email."
+                    )
+        if user is None:
+            raise forms.ValidationError("User not found.")
+        if self.inviter and getattr(self.inviter, "id", None) == user.id:
+            raise forms.ValidationError("You cannot invite yourself.")
+        if self.room:
+            existing_ids = self.room.room_handles.filter(
                 status__in=["approved", "pending"]
             ).values_list("user_id", flat=True)
-            qs = qs.exclude(id__in=existing_ids)
-        if inviter and inviter.is_authenticated:
-            qs = qs.exclude(id=inviter.id)
-        self.fields["recipient"].queryset = qs.order_by("first_name", "username")
-        self.fields["recipient"].label_from_instance = (
-            lambda user: f"{user.username} ({user.display_name})"
-        )
+            if user.id in set(existing_ids):
+                raise forms.ValidationError("User is already in this room.")
+        cleaned["recipient"] = user
+        return cleaned
 
 
 class MessageForm(forms.Form):
@@ -70,7 +113,7 @@ class MessageForm(forms.Form):
         widget=forms.Textarea(
             attrs={
                 "rows": 3,
-                "placeholder": "Share an update, ask a question, or start the discussion…",
+                "placeholder": "Share an update, ask a question, or start the discussion...",
             }
         ),
     )

@@ -28,7 +28,7 @@ class RoomPermissionAndInviteTests(TestCase):
         self.client.login(username="student", password="StrongPass@123")
         resp = self.client.post(
             reverse("rooms:room_create"),
-            {"name": "Open Room", "description": "d", "access_type": "public", "is_archived": False},
+            {"name": "Open Room", "description": "d", "access_type": "public"},
         )
         self.assertEqual(resp.status_code, 302)
 
@@ -43,7 +43,10 @@ class RoomPermissionAndInviteTests(TestCase):
         self.client.login(username="student", password="StrongPass@123")
         self.assertEqual(self.client.get(reverse("rooms:join_room", args=[room.pk])).status_code, 403)
         self.client.login(username="coord", password="StrongPass@123")
-        self.client.post(reverse("rooms:invite_user", args=[room.pk]), {"recipient": self.student.id})
+        self.client.post(
+            reverse("rooms:invite_user", args=[room.pk]),
+            {"identifier": self.student.email},
+        )
         invite = RoomInvite.objects.get(room=room, recipient=self.student)
         self.client.login(username="student", password="StrongPass@123")
         self.client.get(reverse("rooms:respond_invite", args=[invite.pk, "accept"]))
@@ -62,7 +65,7 @@ class RoomPermissionAndInviteTests(TestCase):
             )
         resp = self.client.post(
             reverse("rooms:room_create"),
-            {"name": "Overflow", "description": "d", "access_type": "public", "is_archived": False},
+            {"name": "Overflow", "description": "d", "access_type": "public"},
         )
         self.assertEqual(resp.status_code, 302)
         self.assertEqual(

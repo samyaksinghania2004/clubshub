@@ -1,9 +1,9 @@
 {% extends 'base.html' %}
-{% block title %}{{ room.name }} · ClubsHub{% endblock %}
+{% block title %}{{ room.name }} - ClubsHub{% endblock %}
 {% block content %}
 <section class="page-hero room-hero">
     <div>
-        <p class="eyebrow">{{ room.get_room_type_display }} · {{ room.get_access_type_display }}</p>
+        <p class="eyebrow">{{ room.get_room_type_display }} - {{ room.get_access_type_display }}</p>
         <h1 class="page-title">{{ room.name }}</h1>
         {% if room.description %}<p class="page-subtitle">{{ room.description }}</p>{% endif %}
     </div>
@@ -38,9 +38,9 @@
                         <div>
                             <strong>{{ message_obj.handle.handle_name }}</strong>
                             {% if show_real_identities %}
-                                <span class="muted-text">· {{ message_obj.handle.user.display_name }} ({{ message_obj.handle.user.email }})</span>
+                                <span class="muted-text">- {{ message_obj.handle.user.display_name }} ({{ message_obj.handle.user.email }})</span>
                             {% endif %}
-                            <span class="muted-text">· {{ message_obj.created_at }}</span>
+                            <span class="muted-text">- {{ message_obj.created_at }}</span>
                             {% if message_obj.is_edited %}<span class="tag is-dark is-light">edited</span>{% endif %}
                         </div>
                         <div class="message-actions">
@@ -98,7 +98,7 @@
                 {% for participant in participants %}
                     <li>
                         <span>{{ participant.handle_name }}</span>
-                        {% if show_real_identities %}<span class="muted-text">· {{ participant.user.display_name }}</span>{% endif %}
+                        {% if show_real_identities %}<span class="muted-text">- {{ participant.user.display_name }}</span>{% endif %}
                     </li>
                 {% empty %}
                     <li class="muted-text">No participants yet.</li>
@@ -111,7 +111,7 @@
                 <div class="surface-card__header"><h2>Invite someone</h2></div>
                 <form method="post" action="{% url 'rooms:invite_user' room.pk %}" class="stack-gap">
                     {% csrf_token %}
-                    {{ invite_form.recipient }}
+                    {{ invite_form.identifier }}
                     <button class="button is-link is-light" type="submit">Send invite</button>
                 </form>
             </article>
