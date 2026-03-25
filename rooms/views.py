@@ -236,15 +236,12 @@ def room_detail_view(request, pk):
 
     messages_qs = room.messages.select_related("handle", "handle__user")
     focus_message_id = request.GET.get("focus", "")
-    surrounding_participants = []
-    seen_users = set()
+    participants = room.room_handles.filter(
+        status=RoomHandle.Status.APPROVED
+    ).select_related("user").order_by("handle_name")
     editable_message_ids = []
     deletable_message_ids = []
     for message_obj in messages_qs:
-        key = message_obj.handle.user_id
-        if key not in seen_users:
-            seen_users.add(key)
-            surrounding_participants.append(message_obj.handle)
         if message_obj.can_be_edited_by(request.user):
             editable_message_ids.append(message_obj.pk)
         if message_obj.can_be_deleted_by(request.user) or manager_access:
@@ -266,7 +263,7 @@ def room_detail_view(request, pk):
             "focus_message_id": focus_message_id,
             "review_mode": request.GET.get("review") == "1",
             "show_real_identities": can_review_reports,
-            "participants": surrounding_participants,
+            "participants": participants,
             "editable_message_ids": editable_message_ids,
             "deletable_message_ids": deletable_message_ids,
         },

@@ -17,6 +17,16 @@
         {% elif read_only_mode %}
             <span class="tag is-dark is-light">Moderator preview mode</span>
         {% endif %}
+        <details class="action-menu">
+            <summary class="action-menu__toggle button is-dark is-outlined" aria-label="Room options">
+                ...
+            </summary>
+            <div class="action-menu__panel">
+                <button class="action-menu__item" type="button" data-modal-target="room-members-modal">
+                    View members
+                </button>
+            </div>
+        </details>
         {% if can_manage_room %}
             <a class="button is-dark is-outlined" href="{% url 'rooms:room_edit' room.pk %}">Edit room</a>
         {% endif %}
@@ -93,20 +103,6 @@
     </section>
 
     <aside class="room-sidepanel stack-gap">
-        <article class="surface-card compact-card">
-            <div class="surface-card__header"><h2>Room members</h2></div>
-            <ul class="simple-list">
-                {% for participant in participants %}
-                    <li>
-                        <span>{{ participant.handle_name }}</span>
-                        {% if show_real_identities %}<span class="muted-text">- {{ participant.user.display_name }}</span>{% endif %}
-                    </li>
-                {% empty %}
-                    <li class="muted-text">No participants yet.</li>
-                {% endfor %}
-            </ul>
-        </article>
-
         {% if can_manage_room and room.access_type == 'private_invite_only' %}
             <article class="surface-card compact-card">
                 <div class="surface-card__header"><h2>Invite someone</h2></div>
@@ -147,5 +143,31 @@
             </article>
         {% endif %}
     </aside>
+</div>
+<div class="modal is-hidden" id="room-members-modal" data-modal>
+    <div class="modal__backdrop" data-modal-close></div>
+    <div class="modal__panel">
+        <div class="modal__header">
+            <div>
+                <p class="eyebrow">{{ room.get_room_type_display }}</p>
+                <h3>Room members</h3>
+            </div>
+            <button type="button" class="modal__close button is-dark is-outlined" data-modal-close>
+                Close
+            </button>
+        </div>
+        <div class="modal__body">
+            <ul class="simple-list">
+                {% for participant in participants %}
+                    <li>
+                        <span>{{ participant.handle_name }}</span>
+                        {% if show_real_identities %}<span class="muted-text">- {{ participant.user.display_name }}</span>{% endif %}
+                    </li>
+                {% empty %}
+                    <li class="muted-text">No participants yet.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
 </div>
 {% endblock %}
