@@ -53,7 +53,7 @@
         </div>
     </header>
 
-    <div class="app-body">
+    <div class="app-body{% if not request.user.is_authenticated %} app-body--no-sidebar{% endif %}">
         {% if request.user.is_authenticated %}
         <aside class="app-sidebar" data-app-sidebar>
             <div class="sidebar-group">

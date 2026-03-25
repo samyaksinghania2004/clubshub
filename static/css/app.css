@@ -158,6 +158,10 @@ html[data-theme="light"] .app-topbar {
   min-height: calc(100vh - 84px);
 }
 
+.app-body--no-sidebar {
+  grid-template-columns: 1fr;
+}
+
 .app-sidebar {
   position: sticky;
   top: 84px;
