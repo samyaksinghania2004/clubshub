@@ -97,7 +97,11 @@ class ClubChannelMemberForm(forms.Form):
         max_length=150,
         label="Add member by username or email",
         widget=forms.TextInput(
-            attrs={"class": "input", "placeholder": "username or email"}
+            attrs={
+                "class": "input",
+                "placeholder": "username or email",
+                "data-user-search": "true",
+            }
         ),
     )
 

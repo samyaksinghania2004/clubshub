@@ -19,5 +19,6 @@ urlpatterns = [
         name="mark_notification_read",
     ),
     path("search/", views.search_view, name="search"),
+    path("users/search/", views.user_search_view, name="user_search"),
     path("help/", views.help_view, name="help"),
 ]

@@ -125,6 +125,96 @@
     });
   });
 
+  const closeActionMenus = () => {
+    document.querySelectorAll('details.action-menu[open]').forEach((menu) => {
+      menu.removeAttribute('open');
+    });
+  };
+
+  document.addEventListener(
+    'click',
+    (event) => {
+      const openMenus = document.querySelectorAll('details.action-menu[open]');
+      if (!openMenus.length) return;
+      const clickedInside = Array.from(openMenus).some((menu) => menu.contains(event.target));
+      if (clickedInside) return;
+      closeActionMenus();
+      event.preventDefault();
+      event.stopPropagation();
+    },
+    true,
+  );
+
+  const userSearchInputs = document.querySelectorAll('[data-user-search]');
+  userSearchInputs.forEach((input) => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'autocomplete';
+    input.parentNode.insertBefore(wrapper, input);
+    wrapper.appendChild(input);
+
+    const list = document.createElement('div');
+    list.className = 'autocomplete-list is-hidden';
+    wrapper.appendChild(list);
+
+    let debounceTimer;
+    let abortController;
+
+    const clearList = () => {
+      list.innerHTML = '';
+      list.classList.add('is-hidden');
+    };
+
+    const renderItems = (items) => {
+      list.innerHTML = '';
+      if (!items.length) {
+        list.classList.add('is-hidden');
+        return;
+      }
+      items.forEach((item) => {
+        const option = document.createElement('button');
+        option.type = 'button';
+        option.className = 'autocomplete-item';
+        option.textContent = item.label || item.email || item.username;
+        option.addEventListener('click', () => {
+          input.value = item.email || item.username;
+          clearList();
+        });
+        list.appendChild(option);
+      });
+      list.classList.remove('is-hidden');
+    };
+
+    const search = (value) => {
+      const url = window.clubshubUserSearchUrl;
+      if (!url) return;
+      if (abortController) {
+        abortController.abort();
+      }
+      abortController = new AbortController();
+      fetch(`${url}?q=${encodeURIComponent(value)}`, { signal: abortController.signal })
+        .then((response) => (response.ok ? response.json() : { items: [] }))
+        .then((payload) => renderItems(payload.items || []))
+        .catch(() => {
+          clearList();
+        });
+    };
+
+    input.setAttribute('autocomplete', 'off');
+    input.addEventListener('input', (event) => {
+      const value = event.target.value.trim();
+      window.clearTimeout(debounceTimer);
+      if (value.length < 2) {
+        clearList();
+        return;
+      }
+      debounceTimer = window.setTimeout(() => search(value), 220);
+    });
+
+    input.addEventListener('blur', () => {
+      window.setTimeout(() => clearList(), 120);
+    });
+  });
+
   const openModal = (modal, focusId) => {
     if (!modal) return;
     modal.classList.remove('is-hidden');

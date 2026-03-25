@@ -75,21 +75,13 @@ def room_create_view(request):
         room.event = None
         room.created_by = request.user
         room.save()
-        handle_name = _unique_handle_name(room, request.user)
-        RoomHandle.objects.create(
-            room=room,
-            user=request.user,
-            handle_name=handle_name,
-            status=RoomHandle.Status.APPROVED,
-            approved_at=timezone.now(),
-        )
-        messages.success(request, "Open room created.")
+        messages.success(request, "Open room created. Set your handle to join.")
         log_audit(
             action_type=AuditLogEntry.ActionType.ROOM_CREATED,
             acting_user=request.user,
             room=room,
         )
-        return redirect("rooms:room_detail", pk=room.pk)
+        return redirect("rooms:join_room", pk=room.pk)
     return render(request, "rooms/room_form.html", {"form": form, "mode": "Create"})
 
 
@@ -121,18 +113,6 @@ def _invite_allows_join(room, user):
         recipient=user,
         status=RoomInvite.Status.ACCEPTED,
     ).exists()
-
-
-def _unique_handle_name(room, user):
-    base = (user.username or "member").strip()[:24] or "member"
-    candidate = base
-    counter = 2
-    while RoomHandle.objects.filter(room=room, handle_name__iexact=candidate).exists():
-        suffix = f"-{counter}"
-        trimmed = base[: max(0, 24 - len(suffix))]
-        candidate = f"{trimmed}{suffix}"
-        counter += 1
-    return candidate
 
 
 @login_required

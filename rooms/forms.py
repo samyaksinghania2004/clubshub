@@ -52,7 +52,11 @@ class RoomInviteForm(forms.Form):
         max_length=150,
         label="Search by username or email",
         widget=forms.TextInput(
-            attrs={"class": "input", "placeholder": "username or email"}
+            attrs={
+                "class": "input",
+                "placeholder": "username or email",
+                "data-user-search": "true",
+            }
         ),
     )
 

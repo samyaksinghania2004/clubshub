@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from urllib.parse import urlencode
 
+from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.db import models
 from django.http import JsonResponse
@@ -142,6 +143,32 @@ def search_view(request):
             "rooms": rooms,
         },
     )
+
+
+@login_required
+def user_search_view(request):
+    query = request.GET.get("q", "").strip()
+    items = []
+    if len(query) >= 2:
+        User = get_user_model()
+        qs = User.objects.filter(is_active=True).exclude(id=request.user.id)
+        qs = qs.filter(
+            models.Q(username__icontains=query)
+            | models.Q(email__icontains=query)
+            | models.Q(first_name__icontains=query)
+            | models.Q(last_name__icontains=query)
+        ).order_by("username")[:8]
+        items = [
+            {
+                "id": user.id,
+                "username": user.username,
+                "email": user.email,
+                "display_name": user.display_name,
+                "label": f"{user.username} ({user.display_name})",
+            }
+            for user in qs
+        ]
+    return JsonResponse({"items": items})
 
 
 def help_view(request):
