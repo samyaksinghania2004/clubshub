@@ -1,15 +1,11 @@
 {% extends 'base.html' %}
-{% block title %}{{ club.name }} · ClubsHub{% endblock %}
+{% block title %}{{ club.name }} ? ClubsHub{% endblock %}
 {% block content %}
 <section class="page-hero page-hero--club">
     <div>
         <p class="eyebrow">{{ club.category }}</p>
         <h1 class="page-title">{{ club.name }}</h1>
         <p class="page-subtitle">{{ club.description }}</p>
-        <div class="meta-row">
-            <span>{{ members|length }} members</span>
-            <span>{{ club.contact_email }}</span>
-        </div>
     </div>
     <div class="hero-actions">
         {% if membership and membership.status == 'active' %}
@@ -30,41 +26,118 @@
         {% if can_create_event_for_club %}
             <a class="button is-dark is-outlined" href="{% url 'clubs_events:event_create' %}?club={{ club.pk }}">New event</a>
         {% endif %}
-        {% if can_create_room_for_club %}
-            <a class="button is-dark is-outlined" href="{% url 'rooms:room_create' %}?club={{ club.pk }}&room_type=club">New room</a>
+        {% if can_create_channel %}
+            <a class="button is-dark is-outlined" href="{% url 'clubs_events:club_channel_create' club.pk %}">New channel</a>
         {% endif %}
     </div>
 </section>
 
-<div class="dashboard-grid">
-    <section class="stack-gap">
-        <article class="surface-card">
-            <div class="surface-card__header">
-                <h2>Announcement board</h2>
-                {% if can_post_announcement %}
-                    <a class="button is-link is-light" href="{% url 'clubs_events:announcement_create' 'club' club.pk %}">Post announcement</a>
+<div class="club-chat-layout">
+    <section class="surface-card club-chat-panel">
+        <div class="club-chat-header">
+            <div>
+                <p class="eyebrow">Channel</p>
+                <h2>#{{ active_channel.name }}</h2>
+                {% if active_channel.channel_type == 'event' and active_channel.event %}
+                    <p class="muted-text">Event channel ? <a href="{% url 'clubs_events:event_detail' active_channel.event.pk %}">View event</a></p>
+                {% endif %}
+                {% if active_channel.is_private %}
+                    <p class="muted-text">Private channel for club members.</p>
                 {% endif %}
             </div>
-            {% for ann in announcements %}
-                <article id="announcement-{{ ann.pk }}" class="announcement-card">
-                    <div class="announcement-card__header">
-                        <h3>{{ ann.title }}</h3>
-                        <span class="muted-text">{{ ann.created_at }}</span>
+            {% if not is_member %}
+                <div class="club-chat-cta">
+                    <p class="muted-text">Join the club to send messages. You can keep reading for now.</p>
+                    <form method="post" action="{% url 'clubs_events:club_join' club.pk %}">
+                        {% csrf_token %}
+                        <button class="button is-link is-light" type="submit">Join club to discuss</button>
+                    </form>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="message-stream">
+            {% for message_obj in messages_qs %}
+                <article class="chat-message {% if message_obj.is_system %}chat-message--system{% endif %}">
+                    <div class="chat-message__header">
+                        <div>
+                            <strong>{% if message_obj.author %}{{ message_obj.author.display_name }}{% else %}System{% endif %}</strong>
+                            <span class="muted-text">? {{ message_obj.created_at }}</span>
+                            {% if message_obj.is_system %}<span class="tag is-dark is-light">system</span>{% endif %}
+                        </div>
                     </div>
-                    <p>{{ ann.body|linebreaksbr }}</p>
+                    <div class="chat-message__body">
+                        {{ message_obj.text|linebreaksbr }}
+                    </div>
                 </article>
             {% empty %}
                 <div class="empty-state compact-empty">
-                    <p>No announcements posted yet.</p>
+                    <p>No messages yet. Start the conversation.</p>
                 </div>
             {% endfor %}
-        </article>
+        </div>
 
-        <article class="surface-card">
-            <div class="surface-card__header">
-                <h2>Members</h2>
-                <span class="tag is-dark is-light">Scoped roles reset when a member leaves</span>
+        {% if can_post_messages %}
+            <div class="composer-card">
+                <h2>Post a message</h2>
+                <form method="post" class="stack-gap">
+                    {% csrf_token %}
+                    {% for field in form %}
+                        {{ field }}
+                        {% for error in field.errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
+                    {% endfor %}
+                    <button class="button is-link" type="submit">Send message</button>
+                </form>
             </div>
+        {% elif is_member %}
+            <div class="flash-card flash-info">
+                This channel is read-only.
+            </div>
+        {% endif %}
+    </section>
+
+    <aside class="surface-card club-channel-panel">
+        <div class="surface-card__header">
+            <h2>Channels</h2>
+        </div>
+        <div class="channel-group">
+            <p class="eyebrow">Club</p>
+            <ul class="channel-list">
+                {% for channel in core_channels %}
+                    <li>
+                        <a class="channel-link {% if channel.slug == active_channel.slug %}is-active{% endif %}" href="{% url 'clubs_events:club_channel' club.pk channel.slug %}">
+                            <span>#{{ channel.name }}</span>
+                            <span class="channel-meta">
+                                {% if channel.is_private %}<span class="tag is-dark is-light">private</span>{% endif %}
+                                {% if channel.is_read_only %}<span class="tag is-dark is-light">read only</span>{% endif %}
+                            </span>
+                        </a>
+                    </li>
+                {% empty %}
+                    <li class="muted-text">No channels yet.</li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="channel-group">
+            <p class="eyebrow">Events</p>
+            <ul class="channel-list">
+                {% for channel in event_channels %}
+                    <li>
+                        <a class="channel-link {% if channel.slug == active_channel.slug %}is-active{% endif %}" href="{% url 'clubs_events:club_channel' club.pk channel.slug %}">
+                            <span>#{{ channel.name }}</span>
+                            <span class="channel-meta">
+                                {% if channel.event %}<span class="tag is-link is-light">event</span>{% endif %}
+                            </span>
+                        </a>
+                    </li>
+                {% empty %}
+                    <li class="muted-text">No event channels yet.</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% if can_manage_club %}
+        <div class="channel-group">
+            <p class="eyebrow">Members</p>
             <div class="member-list">
                 {% for m in members %}
                     <div class="member-row">
@@ -74,44 +147,20 @@
                         </div>
                         <div class="member-actions">
                             <span class="tag is-link is-light">{{ m.get_local_role_display }}</span>
-                            {% if can_manage_club and m.local_role == 'member' %}
+                            {% if m.local_role == 'member' %}
                                 <a class="button is-small is-dark is-outlined" href="{% url 'clubs_events:assign_secretary' club.pk m.user_id %}">Make secretary</a>
                             {% endif %}
-                            {% if can_manage_club and m.local_role == 'secretary' %}
+                            {% if m.local_role == 'secretary' %}
                                 <a class="button is-small is-danger is-light" href="{% url 'clubs_events:revoke_secretary' club.pk m.user_id %}">Revoke secretary</a>
                             {% endif %}
                         </div>
                     </div>
+                {% empty %}
+                    <p class="muted-text">No members yet.</p>
                 {% endfor %}
             </div>
-        </article>
-    </section>
-
-    <aside class="stack-gap">
-        <article class="surface-card compact-card">
-            <div class="surface-card__header"><h2>Upcoming events</h2></div>
-            {% if recent_events %}
-                <ul class="simple-list">
-                    {% for event in recent_events %}
-                        <li><a href="{% url 'clubs_events:event_detail' event.pk %}">{{ event.title }}</a></li>
-                    {% endfor %}
-                </ul>
-            {% else %}
-                <p class="muted-text">No active events yet.</p>
-            {% endif %}
-        </article>
-        <article class="surface-card compact-card">
-            <div class="surface-card__header"><h2>Discussion rooms</h2></div>
-            {% if recent_rooms %}
-                <ul class="simple-list">
-                    {% for room in recent_rooms %}
-                        <li><a href="{% url 'rooms:room_detail' room.pk %}">{{ room.name }}</a></li>
-                    {% endfor %}
-                </ul>
-            {% else %}
-                <p class="muted-text">No rooms created yet.</p>
-            {% endif %}
-        </article>
+        </div>
+        {% endif %}
     </aside>
 </div>
 {% endblock %}

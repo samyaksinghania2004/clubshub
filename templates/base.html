@@ -30,7 +30,7 @@
             </a>
             {% if request.user.is_authenticated %}
             <form class="app-search" action="{% url 'core:search' %}" method="get">
-                <input class="input" type="search" name="q" placeholder="Search clubs, events, rooms…">
+                <input class="input" type="search" name="q" placeholder="Search clubs, events, open rooms…">
             </form>
             {% endif %}
         </div>
@@ -58,7 +58,7 @@
                 <p class="sidebar-label">Explore</p>
                 <a class="sidebar-link" href="{% url 'clubs_events:event_feed' %}">Events</a>
                 <a class="sidebar-link" href="{% url 'clubs_events:club_list' %}">Clubs</a>
-                <a class="sidebar-link" href="{% url 'rooms:room_list' %}">Discussion rooms</a>
+                <a class="sidebar-link" href="{% url 'rooms:room_list' %}">Open rooms</a>
                 <a class="sidebar-link" href="{% url 'clubs_events:my_events' %}">My activity</a>
             </div>
             <div class="sidebar-group">
@@ -74,7 +74,7 @@
             <div class="sidebar-group">
                 <p class="sidebar-label">Quick actions</p>
                 <a class="sidebar-link" href="{% url 'clubs_events:event_create' %}">Create event</a>
-                <a class="sidebar-link" href="{% url 'rooms:room_create' %}">Create room</a>
+                <a class="sidebar-link" href="{% url 'rooms:room_create' %}">Create open room</a>
                 <a class="sidebar-link" href="{% url 'clubs_events:club_create' %}">Create club</a>
             </div>
             {% endif %}

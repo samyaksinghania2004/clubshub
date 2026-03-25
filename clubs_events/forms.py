@@ -67,3 +67,26 @@ class AnnouncementForm(forms.ModelForm):
     class Meta:
         model = Announcement
         fields = ["title", "body"]
+
+
+class ClubChannelForm(forms.Form):
+    name = forms.CharField(max_length=80)
+    is_private = forms.BooleanField(required=False, label="Private channel")
+
+    def clean_name(self):
+        name = self.cleaned_data["name"].strip()
+        if not name:
+            raise forms.ValidationError("Channel name cannot be empty.")
+        return name
+
+
+class ClubMessageForm(forms.Form):
+    text = forms.CharField(
+        max_length=2000,
+        widget=forms.Textarea(
+            attrs={
+                "rows": 3,
+                "placeholder": "Share an update, ask a question, or start the discussion...",
+            }
+        ),
+    )

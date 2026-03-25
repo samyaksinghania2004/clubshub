@@ -424,6 +424,92 @@ html[data-theme="light"] .app-sidebar {
   gap: 1rem;
 }
 
+.club-chat-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 1rem;
+  align-items: start;
+}
+
+.club-chat-panel,
+.club-channel-panel {
+  padding: 1.25rem;
+}
+
+.club-chat-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.club-chat-cta {
+  display: grid;
+  gap: 0.5rem;
+  max-width: 260px;
+}
+
+.channel-group + .channel-group {
+  margin-top: 1.25rem;
+}
+
+.channel-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.channel-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 12px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.channel-meta {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  justify-content: flex-end;
+}
+
+.channel-link:hover {
+  background: rgba(110, 168, 254, 0.12);
+  color: var(--text);
+}
+
+.channel-link.is-active {
+  background: rgba(47, 116, 255, 0.2);
+  color: var(--text);
+}
+
+.chat-message--system {
+  background: rgba(47, 116, 255, 0.08);
+}
+
+.tab-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.tab-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 .room-stream-card {
   padding: 0;
   overflow: hidden;
@@ -571,6 +657,7 @@ html[data-theme="light"] .app-sidebar {
   .app-body,
   .dashboard-grid,
   .room-layout,
+  .club-chat-layout,
   .filter-grid,
   .filter-grid--compact {
     grid-template-columns: 1fr;

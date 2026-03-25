@@ -14,13 +14,13 @@ class DiscussionRoom(models.Model):
     class RoomType(models.TextChoices):
         CLUB = "club", "Club"
         EVENT = "event", "Event"
-        TOPIC = "topic", "Topic"
+        TOPIC = "topic", "Open room"
 
     class AccessType(models.TextChoices):
         PUBLIC = "public", "Public"
         CLUB_ONLY = "club_only", "Club only"
         EVENT_ONLY = "event_only", "Event only"
-        PRIVATE_INVITE_ONLY = "private_invite_only", "Private invite only"
+        PRIVATE_INVITE_ONLY = "private_invite_only", "Private (invite only)"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=60)

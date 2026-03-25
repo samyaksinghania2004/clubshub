@@ -5,12 +5,12 @@
     <div class="surface-card form-card">
         <div class="surface-card__header">
             <div>
-                <p class="eyebrow">Join room</p>
+                <p class="eyebrow">Join open room</p>
                 <h1>{{ room.name }}</h1>
             </div>
             <span class="tag is-dark is-light">{{ room.get_access_type_display }}</span>
         </div>
-        <p class="muted-text">Pick a handle that is unique in this room. If the room is moderated, your request may need approval before you can post.</p>
+        <p class="muted-text">Pick a handle that is unique in this room. Private rooms require an invite before you can join.</p>
         <form method="post" class="stack-gap">
             {% csrf_token %}
             {% for field in form %}

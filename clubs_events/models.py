@@ -384,3 +384,72 @@ class Announcement(models.Model):
         target_count = sum(bool(x) for x in [self.club, self.event, self.room])
         if target_count != 1:
             raise ValidationError("Announcement must target exactly one object.")
+
+
+class ClubChannel(models.Model):
+    class ChannelType(models.TextChoices):
+        ANNOUNCEMENTS = "announcements", "Announcements"
+        WELCOME = "welcome", "Welcome"
+        MAIN = "main", "Main"
+        RANDOM = "random", "Random"
+        EVENTS = "events", "Events"
+        EVENT = "event", "Event"
+        CUSTOM = "custom", "Custom"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    club = models.ForeignKey(Club, on_delete=models.CASCADE, related_name="channels")
+    name = models.CharField(max_length=80)
+    slug = models.SlugField(max_length=80)
+    channel_type = models.CharField(
+        max_length=20, choices=ChannelType.choices, default=ChannelType.CUSTOM
+    )
+    is_private = models.BooleanField(default=False)
+    is_read_only = models.BooleanField(default=False)
+    event = models.OneToOneField(
+        Event,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="chat_channel",
+    )
+    created_by = models.ForeignKey(
+        "accounts.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_channels",
+    )
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["club", "slug"], name="unique_club_channel_slug"
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.club.name} · {self.name}"
+
+
+class ClubMessage(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    channel = models.ForeignKey(
+        ClubChannel, on_delete=models.CASCADE, related_name="messages"
+    )
+    author = models.ForeignKey(
+        "accounts.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="club_messages",
+    )
+    text = models.TextField(max_length=2000)
+    is_system = models.BooleanField(default=False)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["created_at"]

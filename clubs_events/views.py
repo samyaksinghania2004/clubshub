@@ -16,7 +16,6 @@ from core.permissions import (
     can_assign_secretary,
     can_create_club,
     can_create_event,
-    can_create_room,
     can_manage_club,
     can_manage_event,
     can_post_announcement,
@@ -25,8 +24,21 @@ from core.permissions import (
 from core.services import create_notification, log_audit
 from rooms.models import DiscussionRoom, RoomHandle
 
-from .forms import AnnouncementForm, ClubForm, EventCancellationForm, EventForm
-from .models import Announcement, Club, ClubMembership, Event, Registration
+from .forms import (
+    AnnouncementForm,
+    ClubChannelForm,
+    ClubForm,
+    ClubMessageForm,
+    EventCancellationForm,
+    EventForm,
+)
+from .models import Announcement, Club, ClubChannel, ClubMembership, ClubMessage, Event, Registration
+from .services import (
+    create_custom_channel,
+    create_welcome_message,
+    ensure_default_channels,
+    get_or_create_event_channel,
+)
 
 
 def _clubs_user_can_create_for(user):
@@ -95,6 +107,14 @@ def event_feed_view(request):
         )[:6]
     )
 
+    events = list(events)
+    for event in events:
+        channel = get_or_create_event_channel(event, actor=request.user)
+        event.discuss_url = reverse(
+            "clubs_events:club_channel",
+            kwargs={"pk": event.club_id, "slug": channel.slug},
+        )
+
     return render(
         request,
         "clubs_events/event_feed.html",
@@ -144,13 +164,97 @@ def club_list_view(request):
 
 
 @login_required
-def club_detail_view(request, pk):
+def club_detail_view(request, pk, channel_slug=None):
     club = get_object_or_404(Club, pk=pk)
-    membership = ClubMembership.objects.filter(club=club, user=request.user).first()
-    announcements = club.announcements.filter(is_active=True)[:10]
+    membership = ClubMembership.objects.filter(
+        club=club, user=request.user, status=ClubMembership.Status.ACTIVE
+    ).first()
     members = club.memberships.filter(status=ClubMembership.Status.ACTIVE).select_related("user")
-    recent_events = club.events.filter(is_archived=False).order_by("start_time")[:6]
-    recent_rooms = club.discussion_rooms.filter(is_archived=False).order_by("name")[:6]
+    is_member = bool(membership)
+    is_coordinator = bool(
+        membership and membership.local_role == ClubMembership.LocalRole.COORDINATOR
+    )
+    is_secretary = bool(
+        membership and membership.local_role == ClubMembership.LocalRole.SECRETARY
+    )
+    ensure_default_channels(club, actor=request.user)
+    for event in club.events.filter(is_archived=False):
+        get_or_create_event_channel(event, actor=request.user)
+
+    channels_qs = ClubChannel.objects.filter(club=club).select_related("event")
+    channels = []
+    for channel in channels_qs:
+        if channel.is_private and not (is_member or is_global_admin(request.user)):
+            continue
+        if (
+            channel.channel_type == ClubChannel.ChannelType.EVENT
+            and channel.event
+            and channel.event.status != Event.Status.PUBLISHED
+            and not (is_member or is_global_admin(request.user))
+        ):
+            continue
+        channels.append(channel)
+
+    if channel_slug:
+        active_channel = next((c for c in channels if c.slug == channel_slug), None)
+        if active_channel is None:
+            raise Http404
+    else:
+        active_channel = next(
+            (c for c in channels if c.channel_type == ClubChannel.ChannelType.MAIN),
+            None,
+        )
+        if active_channel is None and channels:
+            active_channel = channels[0]
+
+    if active_channel is None:
+        raise Http404
+
+    channel_order = {
+        ClubChannel.ChannelType.ANNOUNCEMENTS: 0,
+        ClubChannel.ChannelType.WELCOME: 1,
+        ClubChannel.ChannelType.MAIN: 2,
+        ClubChannel.ChannelType.RANDOM: 3,
+        ClubChannel.ChannelType.EVENTS: 4,
+        ClubChannel.ChannelType.CUSTOM: 5,
+    }
+    core_channels = sorted(
+        [c for c in channels if c.channel_type != ClubChannel.ChannelType.EVENT],
+        key=lambda c: (channel_order.get(c.channel_type, 99), c.name.lower()),
+    )
+    event_channels = sorted(
+        [c for c in channels if c.channel_type == ClubChannel.ChannelType.EVENT],
+        key=lambda c: c.name.lower(),
+    )
+
+    can_create_channel = is_global_admin(request.user) or is_coordinator
+
+    def can_post_to_channel():
+        if not (is_member or is_global_admin(request.user)):
+            return False
+        if active_channel.channel_type == ClubChannel.ChannelType.WELCOME:
+            return False
+        if active_channel.channel_type == ClubChannel.ChannelType.ANNOUNCEMENTS:
+            return is_global_admin(request.user) or is_coordinator or is_secretary
+        if active_channel.is_read_only:
+            return False
+        return True
+
+    form = ClubMessageForm(request.POST or None)
+    if request.method == "POST":
+        if not can_post_to_channel():
+            messages.error(request, "Join the club to send messages in this channel.")
+            return redirect("clubs_events:club_channel", pk=club.pk, slug=active_channel.slug)
+        if form.is_valid():
+            ClubMessage.objects.create(
+                channel=active_channel,
+                author=request.user,
+                text=form.cleaned_data["text"],
+            )
+            return redirect("clubs_events:club_channel", pk=club.pk, slug=active_channel.slug)
+
+    messages_qs = active_channel.messages.select_related("author")
+
     return render(
         request,
         "clubs_events/club_detail.html",
@@ -158,16 +262,18 @@ def club_detail_view(request, pk):
             "club": club,
             "membership": membership,
             "members": members,
-            "announcements": announcements,
-            "recent_events": recent_events,
-            "recent_rooms": recent_rooms,
+            "core_channels": core_channels,
+            "event_channels": event_channels,
+            "active_channel": active_channel,
+            "messages_qs": messages_qs,
+            "form": form,
+            "is_member": is_member,
+            "can_create_channel": can_create_channel,
+            "can_post_messages": can_post_to_channel(),
             "can_manage_club": can_manage_club(request.user, club),
-            "can_post_announcement": can_post_announcement(request.user, club=club),
             "can_create_event_for_club": can_create_event(request.user, club),
-            "can_create_room_for_club": can_create_room(request.user, club=club),
         },
     )
-
 
 @login_required
 def club_join_view(request, pk):
@@ -185,6 +291,7 @@ def club_join_view(request, pk):
         membership.local_role = ClubMembership.LocalRole.MEMBER
         membership.left_at = None
         membership.save(update_fields=["status", "local_role", "left_at", "updated_at"])
+    create_welcome_message(club, request.user)
     messages.success(request, f"You joined {club.name}.")
     log_audit(
         action_type=AuditLogEntry.ActionType.CLUB_JOINED,
@@ -209,6 +316,35 @@ def club_leave_view(request, pk):
         details={"club": str(club.id)},
     )
     return redirect("clubs_events:club_detail", pk=club.pk)
+
+
+@login_required
+def club_channel_create_view(request, pk):
+    club = get_object_or_404(Club, pk=pk)
+    membership = ClubMembership.objects.filter(
+        club=club, user=request.user, status=ClubMembership.Status.ACTIVE
+    ).first()
+    if not (
+        is_global_admin(request.user)
+        or (membership and membership.local_role == ClubMembership.LocalRole.COORDINATOR)
+    ):
+        return HttpResponseForbidden("Not allowed")
+
+    form = ClubChannelForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        channel = create_custom_channel(
+            club,
+            form.cleaned_data["name"],
+            is_private=form.cleaned_data["is_private"],
+            actor=request.user,
+        )
+        messages.success(request, f"Channel #{channel.name} created.")
+        return redirect("clubs_events:club_channel", pk=club.pk, slug=channel.slug)
+    return render(
+        request,
+        "clubs_events/channel_form.html",
+        {"club": club, "form": form},
+    )
 
 
 @login_required
@@ -255,6 +391,7 @@ def club_create_view(request):
     form = ClubForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         club = form.save()
+        ensure_default_channels(club, actor=request.user)
         messages.success(request, "Club created successfully.")
         log_audit(
             action_type=AuditLogEntry.ActionType.CLUB_CREATED,
@@ -288,6 +425,11 @@ def event_detail_view(request, pk):
     event = get_object_or_404(Event.objects.select_related("club"), pk=pk)
     registration = request.user.registrations.filter(event=event).first()
     announcements = event.announcements.filter(is_active=True)[:10]
+    event_channel = get_or_create_event_channel(event, actor=request.user)
+    discuss_url = reverse(
+        "clubs_events:club_channel",
+        kwargs={"pk": event.club.pk, "slug": event_channel.slug},
+    )
     registrations = None
     if can_manage_event(request.user, event):
         registrations = event.registrations.select_related("user").all()
@@ -301,7 +443,8 @@ def event_detail_view(request, pk):
             "announcements": announcements,
             "can_post_announcement": can_post_announcement(request.user, event=event),
             "registrations": registrations,
-            "can_create_room_for_event": can_create_room(request.user, event=event),
+            "event_channel": event_channel,
+            "discuss_url": discuss_url,
         },
     )
 
@@ -328,6 +471,7 @@ def event_create_view(request):
         event.created_by = request.user
         event.updated_by = request.user
         event.save()
+        get_or_create_event_channel(event, actor=request.user)
         messages.success(request, "Event created successfully.")
         log_audit(
             action_type=AuditLogEntry.ActionType.EVENT_CREATED,
@@ -352,6 +496,7 @@ def event_edit_view(request, pk):
         event = form.save(commit=False)
         event.updated_by = request.user
         event.save()
+        get_or_create_event_channel(event, actor=request.user)
         messages.success(request, "Event updated successfully.")
         log_audit(
             action_type=AuditLogEntry.ActionType.EVENT_UPDATED,

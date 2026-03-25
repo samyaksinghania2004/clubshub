@@ -30,7 +30,7 @@
         </article>
 
         <article class="surface-card">
-            <div class="surface-card__header"><h2>Discussion context</h2></div>
+            <div class="surface-card__header"><h2>Room context</h2></div>
             {% for item in surrounding_messages %}
                 <article class="chat-message {% if item.pk == report.message.pk %}is-focused{% endif %}">
                     <div class="chat-message__header">

@@ -1,21 +1,21 @@
 {% extends 'base.html' %}
-{% block title %}Discussion Rooms · ClubsHub{% endblock %}
+{% block title %}Open Rooms · ClubsHub{% endblock %}
 {% block content %}
 <section class="page-hero">
     <div>
-        <p class="eyebrow">Channels</p>
-        <h1 class="page-title">Discussion Rooms</h1>
-        <p class="page-subtitle">A cleaner, channel-style interface for club, event and invite-only conversations.</p>
+        <p class="eyebrow">Open rooms</p>
+        <h1 class="page-title">Open Rooms</h1>
+        <p class="page-subtitle">Public and invite-only rooms where anyone can chat with a unique handle.</p>
     </div>
     {% if can_create_room_any %}
-        <a class="button is-link is-medium" href="{% url 'rooms:room_create' %}">Create room</a>
+        <a class="button is-link is-medium" href="{% url 'rooms:room_create' %}">Create open room</a>
     {% endif %}
 </section>
 
 <section class="panel-card">
     <form method="get" class="field has-addons">
         <div class="control is-expanded">
-            <input class="input" type="text" name="q" value="{{ q }}" placeholder="Search rooms by name or description">
+            <input class="input" type="text" name="q" value="{{ q }}" placeholder="Search open rooms by name or description">
         </div>
         <div class="control">
             <button class="button is-link" type="submit">Search</button>
@@ -36,8 +36,6 @@
                 </div>
                 <p>{{ room.description|default:'No description added yet.' }}</p>
                 <div class="meta-row">
-                    {% if room.club %}<span>Club: {{ room.club.name }}</span>{% endif %}
-                    {% if room.event %}<span>Event: {{ room.event.title }}</span>{% endif %}
                     <span>{{ room.room_handles.count }} handles</span>
                 </div>
                 <div class="surface-card__actions">
@@ -46,8 +44,8 @@
             </article>
         {% empty %}
             <div class="empty-state">
-                <h2>No rooms found</h2>
-                <p>Try another search term or create one for your club.</p>
+                <h2>No open rooms found</h2>
+                <p>Try another search term or create a new room.</p>
             </div>
         {% endfor %}
     </section>

@@ -125,7 +125,9 @@ def search_view(request):
                 | models.Q(tags__icontains=query)
                 | models.Q(club__name__icontains=query)
             )
-            rooms = DiscussionRoom.objects.filter(is_archived=False).filter(
+            rooms = DiscussionRoom.objects.filter(
+                is_archived=False, room_type=DiscussionRoom.RoomType.TOPIC
+            ).filter(
                 models.Q(name__icontains=query) | models.Q(description__icontains=query)
             )
 

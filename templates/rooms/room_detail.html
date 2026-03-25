@@ -20,9 +20,6 @@
         {% if can_manage_room %}
             <a class="button is-dark is-outlined" href="{% url 'rooms:room_edit' room.pk %}">Edit room</a>
         {% endif %}
-        {% if can_post_announcement %}
-            <a class="button is-link is-light" href="{% url 'clubs_events:announcement_create' 'room' room.pk %}">Post announcement</a>
-        {% endif %}
     </div>
 </section>
 
@@ -34,20 +31,6 @@
 
 <div class="room-layout">
     <section class="surface-card room-stream-card">
-        {% if announcements %}
-            <div class="room-announcements">
-                {% for ann in announcements %}
-                    <article id="announcement-{{ ann.pk }}" class="announcement-card compact-announcement">
-                        <div class="announcement-card__header">
-                            <h3>{{ ann.title }}</h3>
-                            <span class="muted-text">{{ ann.created_at }}</span>
-                        </div>
-                        <p>{{ ann.body|linebreaksbr }}</p>
-                    </article>
-                {% endfor %}
-            </div>
-        {% endif %}
-
         <div class="message-stream">
             {% for message_obj in messages_qs %}
                 <article id="message-{{ message_obj.pk }}" class="chat-message {% if focus_message_id == message_obj.pk|stringformat:'s' %}is-focused{% endif %}">
@@ -110,7 +93,7 @@
 
     <aside class="room-sidepanel stack-gap">
         <article class="surface-card compact-card">
-            <div class="surface-card__header"><h2>People in context</h2></div>
+            <div class="surface-card__header"><h2>Room members</h2></div>
             <ul class="simple-list">
                 {% for participant in participants %}
                     <li>
@@ -123,7 +106,7 @@
             </ul>
         </article>
 
-        {% if can_manage_room %}
+        {% if can_manage_room and room.access_type == 'private_invite_only' %}
             <article class="surface-card compact-card">
                 <div class="surface-card__header"><h2>Invite someone</h2></div>
                 <form method="post" action="{% url 'rooms:invite_user' room.pk %}" class="stack-gap">

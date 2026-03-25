@@ -3,7 +3,6 @@ from __future__ import annotations
 from django import forms
 
 from accounts.models import User
-from clubs_events.models import Club, Event
 
 from .models import DiscussionRoom, Report, RoomInvite
 
@@ -14,17 +13,16 @@ class DiscussionRoomForm(forms.ModelForm):
         fields = [
             "name",
             "description",
-            "room_type",
             "access_type",
-            "club",
-            "event",
             "is_archived",
         ]
 
-    def __init__(self, *args, club_queryset=None, event_queryset=None, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["club"].queryset = club_queryset or Club.objects.filter(is_active=True)
-        self.fields["event"].queryset = event_queryset or Event.objects.filter(is_archived=False)
+        self.fields["access_type"].choices = [
+            (DiscussionRoom.AccessType.PUBLIC, "Public"),
+            (DiscussionRoom.AccessType.PRIVATE_INVITE_ONLY, "Private (invite only)"),
+        ]
 
 
 class JoinRoomForm(forms.Form):
@@ -53,16 +51,6 @@ class RoomInviteForm(forms.Form):
         super().__init__(*args, **kwargs)
         self.room = room
         qs = User.objects.all()
-        if room and room.club:
-            member_ids = room.club.memberships.filter(status="active").values_list(
-                "user_id", flat=True
-            )
-            qs = qs.filter(id__in=member_ids)
-        if room and room.event:
-            attendee_ids = room.event.registrations.filter(status="registered").values_list(
-                "user_id", flat=True
-            )
-            qs = qs.filter(id__in=attendee_ids)
         if room:
             existing_ids = room.room_handles.filter(
                 status__in=["approved", "pending"]
@@ -71,6 +59,9 @@ class RoomInviteForm(forms.Form):
         if inviter and inviter.is_authenticated:
             qs = qs.exclude(id=inviter.id)
         self.fields["recipient"].queryset = qs.order_by("first_name", "username")
+        self.fields["recipient"].label_from_instance = (
+            lambda user: f"{user.username} ({user.display_name})"
+        )
 
 
 class MessageForm(forms.Form):

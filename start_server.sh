@@ -40,7 +40,7 @@ echo "Collecting static files..."
 python manage.py collectstatic --noinput
 
 echo "Stopping old dev server if running..."
-pkill -f "manage.py runserver 0.0.0.0:8000" 2>/dev/null || true
+pkill -f "manage.py runserver 0.0.0.0:8002" 2>/dev/null || true
 
-echo "Starting Django dev server on 0.0.0.0:8000 ..."
-exec python manage.py runserver 0.0.0.0:8000
+echo "Starting Django dev server on 0.0.0.0:8002 ..."
+exec python manage.py runserver 0.0.0.0:8002

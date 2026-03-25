@@ -24,13 +24,22 @@ class RoomPermissionAndInviteTests(TestCase):
         self.event = Event.objects.create(club=self.club, title="Jam", description="j", venue="a", start_time=timezone.now()+timedelta(days=1), end_time=timezone.now()+timedelta(days=1, hours=1), status="published", created_by=self.coord)
         Registration.objects.create(event=self.event, user=self.student, status="registered")
 
-    def test_secretary_can_create_room_in_own_club(self):
-        self.client.login(username="sec", password="StrongPass@123")
-        resp = self.client.post(reverse("rooms:room_create"), {"name": "Sec Room", "description": "d", "room_type": "club", "access_type": "club_only", "club": str(self.club.pk), "is_archived": False})
+    def test_any_user_can_create_open_room(self):
+        self.client.login(username="student", password="StrongPass@123")
+        resp = self.client.post(
+            reverse("rooms:room_create"),
+            {"name": "Open Room", "description": "d", "access_type": "public", "is_archived": False},
+        )
         self.assertEqual(resp.status_code, 302)
 
     def test_private_invite_only_access_flow(self):
-        room = DiscussionRoom.objects.create(name="Private", description="d", room_type="event", access_type="private_invite_only", event=self.event, club=self.club, created_by=self.coord)
+        room = DiscussionRoom.objects.create(
+            name="Private",
+            description="d",
+            room_type="topic",
+            access_type="private_invite_only",
+            created_by=self.coord,
+        )
         self.client.login(username="student", password="StrongPass@123")
         self.assertEqual(self.client.get(reverse("rooms:join_room", args=[room.pk])).status_code, 403)
         self.client.login(username="coord", password="StrongPass@123")
@@ -40,6 +49,30 @@ class RoomPermissionAndInviteTests(TestCase):
         self.client.get(reverse("rooms:respond_invite", args=[invite.pk, "accept"]))
         resp = self.client.post(reverse("rooms:join_room", args=[room.pk]), {"handle_name": "invitee"})
         self.assertEqual(resp.status_code, 302)
+
+    def test_open_room_limit(self):
+        self.client.login(username="student", password="StrongPass@123")
+        for idx in range(5):
+            DiscussionRoom.objects.create(
+                name=f"Room {idx}",
+                description="d",
+                room_type="topic",
+                access_type="public",
+                created_by=self.student,
+            )
+        resp = self.client.post(
+            reverse("rooms:room_create"),
+            {"name": "Overflow", "description": "d", "access_type": "public", "is_archived": False},
+        )
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(
+            DiscussionRoom.objects.filter(
+                created_by=self.student,
+                room_type="topic",
+                is_archived=False,
+            ).count(),
+            5,
+        )
 
     def test_admin_only_reports_dashboard(self):
         room = DiscussionRoom.objects.create(name="Open Room", description="General room", room_type="topic", access_type="public", created_by=self.coord)

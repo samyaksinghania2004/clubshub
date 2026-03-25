@@ -10,14 +10,11 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 
-from clubs_events.models import Club, ClubMembership, Event
 from core.models import AuditLogEntry, Notification
 from core.permissions import (
     can_create_room,
     can_manage_room,
-    can_post_announcement,
     can_view_reports,
-    is_global_admin,
 )
 from core.services import create_notification, log_audit
 
@@ -33,32 +30,14 @@ from .forms import (
 from .models import DiscussionRoom, Message, Report, RoomHandle, RoomInvite
 
 
-def _room_form_targets_for_user(user):
-    if is_global_admin(user):
-        clubs = Club.objects.filter(is_active=True)
-        events = Event.objects.filter(is_archived=False, club__is_active=True)
-        return clubs, events
-
-    clubs = Club.objects.filter(
-        memberships__user=user,
-        memberships__status=ClubMembership.Status.ACTIVE,
-        memberships__local_role__in=[
-            ClubMembership.LocalRole.COORDINATOR,
-            ClubMembership.LocalRole.SECRETARY,
-        ],
-        is_active=True,
-    ).distinct()
-    events = Event.objects.filter(club__in=clubs, is_archived=False).distinct()
-    return clubs, events
-
-
 @login_required
 def room_list_view(request):
     q = request.GET.get("q", "").strip()[:50]
-    rooms = DiscussionRoom.objects.filter(is_archived=False).select_related("club", "event")
+    rooms = DiscussionRoom.objects.filter(
+        is_archived=False, room_type=DiscussionRoom.RoomType.TOPIC
+    )
     if q:
         rooms = rooms.filter(name__icontains=q) | rooms.filter(description__icontains=q)
-    clubs, events = _room_form_targets_for_user(request.user)
     return render(
         request,
         "rooms/room_list.html",
@@ -66,40 +45,37 @@ def room_list_view(request):
             "rooms": rooms.distinct(),
             "q": q,
             "my_handles": request.user.room_handles.select_related("room"),
-            "can_create_room_any": is_global_admin(request.user) or clubs.exists() or events.exists(),
+            "can_create_room_any": True,
         },
     )
 
 
 @login_required
 def room_create_view(request):
-    available_clubs, available_events = _room_form_targets_for_user(request.user)
-    if not (is_global_admin(request.user) or available_clubs.exists() or available_events.exists()):
+    if not can_create_room(request.user):
         return HttpResponseForbidden("You do not have permission to create rooms.")
 
-    initial = {}
-    if request.GET.get("club"):
-        initial["club"] = request.GET.get("club")
-    if request.GET.get("event"):
-        initial["event"] = request.GET.get("event")
-    if request.GET.get("room_type"):
-        initial["room_type"] = request.GET.get("room_type")
+    active_count = DiscussionRoom.objects.filter(
+        created_by=request.user,
+        room_type=DiscussionRoom.RoomType.TOPIC,
+        is_archived=False,
+    ).count()
+    if active_count >= 5:
+        messages.error(
+            request,
+            "You have reached the limit of 5 active open rooms. Archive an old room to create a new one.",
+        )
+        return redirect("rooms:room_list")
 
-    form = DiscussionRoomForm(
-        request.POST or None,
-        club_queryset=available_clubs if not is_global_admin(request.user) else Club.objects.filter(is_active=True),
-        event_queryset=available_events if not is_global_admin(request.user) else Event.objects.filter(is_archived=False),
-        initial=initial,
-    )
+    form = DiscussionRoomForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
-        club = form.cleaned_data.get("club")
-        event = form.cleaned_data.get("event")
-        if not can_create_room(request.user, club=club, event=event):
-            return HttpResponseForbidden("You do not have permission to create rooms.")
         room = form.save(commit=False)
+        room.room_type = DiscussionRoom.RoomType.TOPIC
+        room.club = None
+        room.event = None
         room.created_by = request.user
         room.save()
-        messages.success(request, "Discussion room created.")
+        messages.success(request, "Open room created.")
         log_audit(
             action_type=AuditLogEntry.ActionType.ROOM_CREATED,
             acting_user=request.user,
@@ -114,13 +90,7 @@ def room_edit_view(request, pk):
     room = get_object_or_404(DiscussionRoom.objects.select_related("club", "event"), pk=pk)
     if not can_manage_room(request.user, room):
         raise Http404
-    available_clubs, available_events = _room_form_targets_for_user(request.user)
-    form = DiscussionRoomForm(
-        request.POST or None,
-        instance=room,
-        club_queryset=available_clubs if not is_global_admin(request.user) else Club.objects.filter(is_active=True),
-        event_queryset=available_events if not is_global_admin(request.user) else Event.objects.filter(is_archived=False),
-    )
+    form = DiscussionRoomForm(request.POST or None, instance=room)
     if request.method == "POST" and form.is_valid():
         room = form.save()
         messages.success(request, "Room updated.")
@@ -169,12 +139,14 @@ def join_room_view(request, pk):
     )
     if request.method == "POST" and form.is_valid():
         status = RoomHandle.Status.APPROVED
-        if room.access_type in {
+        if room.room_type in {
+            DiscussionRoom.RoomType.CLUB,
+            DiscussionRoom.RoomType.EVENT,
+        } and room.access_type in {
             DiscussionRoom.AccessType.CLUB_ONLY,
             DiscussionRoom.AccessType.EVENT_ONLY,
         }:
             status = RoomHandle.Status.PENDING
-
         if existing and existing.status == RoomHandle.Status.LEFT:
             existing.handle_name = form.cleaned_data["handle_name"]
             existing.status = status
@@ -201,8 +173,6 @@ def join_room_view(request, pk):
         if status == RoomHandle.Status.APPROVED:
             messages.success(request, f"You joined {room.name}.")
             return redirect("rooms:room_detail", pk=room.pk)
-        messages.info(request, "Your room access request is pending approval.")
-        return redirect("rooms:room_list")
     return render(request, "rooms/join_room.html", {"room": room, "form": form})
 
 
@@ -285,8 +255,6 @@ def room_detail_view(request, pk):
             "participants": surrounding_participants,
             "editable_message_ids": editable_message_ids,
             "deletable_message_ids": deletable_message_ids,
-            "announcements": room.announcements.filter(is_active=True)[:10],
-            "can_post_announcement": can_post_announcement(request.user, room=room),
         },
     )
 
@@ -296,6 +264,8 @@ def invite_user_view(request, pk):
     room = get_object_or_404(DiscussionRoom, pk=pk)
     if not can_manage_room(request.user, room):
         return HttpResponseForbidden("Not allowed")
+    if room.access_type != DiscussionRoom.AccessType.PRIVATE_INVITE_ONLY:
+        return HttpResponseForbidden("Invites are only available for private rooms.")
     form = RoomInviteForm(request.POST or None, room=room, inviter=request.user)
     if request.method == "POST" and form.is_valid():
         invite, _ = RoomInvite.objects.update_or_create(

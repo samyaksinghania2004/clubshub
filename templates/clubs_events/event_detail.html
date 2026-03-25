@@ -24,9 +24,7 @@
             <a class="button is-danger is-light" href="{% url 'clubs_events:event_cancel' event.pk %}">Cancel event</a>
             <a class="button is-dark is-outlined" href="{% url 'clubs_events:attendance_manage' event.pk %}">Attendance</a>
         {% endif %}
-        {% if can_create_room_for_event %}
-            <a class="button is-dark is-outlined" href="{% url 'rooms:room_create' %}?event={{ event.pk }}&room_type=event">Create room</a>
-        {% endif %}
+        <a class="button is-link is-light" href="{{ discuss_url }}">Discuss</a>
     </div>
 </section>
 
@@ -34,10 +32,15 @@
     <section class="stack-gap">
         <article class="surface-card">
             <div class="surface-card__header">
-                <h2>Announcement board</h2>
-                {% if can_post_announcement %}
-                    <a class="button is-link is-light" href="{% url 'clubs_events:announcement_create' 'event' event.pk %}">Post announcement</a>
-                {% endif %}
+                <div class="tab-row">
+                    <h2>Announcements</h2>
+                    <div class="tab-actions">
+                        <a class="button is-link is-light" href="{{ discuss_url }}">Discuss</a>
+                        {% if can_post_announcement %}
+                            <a class="button is-link is-light" href="{% url 'clubs_events:announcement_create' 'event' event.pk %}">Post announcement</a>
+                        {% endif %}
+                    </div>
+                </div>
             </div>
             {% for ann in announcements %}
                 <article id="announcement-{{ ann.pk }}" class="announcement-card">
@@ -80,18 +83,6 @@
                 <p><strong>{{ registration.get_status_display }}</strong></p>
             {% else %}
                 <p class="muted-text">You have not registered yet.</p>
-            {% endif %}
-        </article>
-        <article class="surface-card compact-card">
-            <div class="surface-card__header"><h2>Discussion rooms</h2></div>
-            {% if event.discussion_rooms.all %}
-                <ul class="simple-list">
-                    {% for room in event.discussion_rooms.all %}
-                        <li><a href="{% url 'rooms:room_detail' room.pk %}">{{ room.name }}</a></li>
-                    {% endfor %}
-                </ul>
-            {% else %}
-                <p class="muted-text">No room linked yet.</p>
             {% endif %}
         </article>
     </aside>
