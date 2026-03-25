@@ -29,6 +29,32 @@
     return token ? decodeURIComponent(token.split('=')[1]) : '';
   };
 
+  const readJsonResponse = async (response) => {
+    const raw = await response.text();
+    if (!raw) {
+      return { data: null, raw: '' };
+    }
+    try {
+      return { data: JSON.parse(raw), raw };
+    } catch (error) {
+      return { data: null, raw };
+    }
+  };
+
+  const describeError = (payload, raw, response) => {
+    if (payload?.error) return payload.error;
+    if (payload?.errors) {
+      const messages = Object.values(payload.errors).flat();
+      if (messages.length) return messages[0];
+    }
+    if (raw) {
+      const text = raw.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+      if (text) return text.slice(0, 140);
+    }
+    if (response) return `Server error (${response.status})`;
+    return 'Please try again.';
+  };
+
   const loadTheme = () => {
     const saved = localStorage.getItem(themeKey);
     if (saved) {
@@ -421,7 +447,7 @@
         const formData = new FormData(dmForm);
         const bodyValue = (formData.get('body') || '').toString().trim();
         if (!bodyValue) return;
-        const headers = { 'X-Requested-With': 'XMLHttpRequest' };
+        const headers = { 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' };
         const csrfToken =
           dmForm.querySelector('input[name="csrfmiddlewaretoken"]')?.value || getCookie('csrftoken');
         if (csrfToken) {
@@ -434,25 +460,15 @@
             credentials: 'same-origin',
             body: formData,
           });
-          if (response.ok) {
-            const payload = await response.json();
-            appendMessage(payload.item, true);
+          const { data, raw } = await readJsonResponse(response);
+          if (response.ok && data?.item) {
+            appendMessage(data.item, true);
             dmForm.reset();
             return;
           }
-          let payload;
-          try {
-            payload = await response.json();
-          } catch (error) {
-            payload = null;
-          }
-          const errorMessage =
-            payload?.error ||
-            (payload?.errors ? Object.values(payload.errors).flat()[0] : null) ||
-            `Server error (${response.status})`;
-          showToast('Message not sent', errorMessage);
+          showToast('Message not sent', describeError(data, raw, response));
         } catch (error) {
-          showToast('Message not sent', 'Please try again.');
+          showToast('Message not sent', error?.message || 'Please try again.');
         }
       });
     }
@@ -639,7 +655,7 @@
         const formData = new FormData(chatForm);
         const bodyValue = (formData.get('text') || '').toString().trim();
         if (!bodyValue) return;
-        const headers = { 'X-Requested-With': 'XMLHttpRequest' };
+        const headers = { 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' };
         const csrfToken =
           chatForm.querySelector('input[name="csrfmiddlewaretoken"]')?.value || getCookie('csrftoken');
         if (csrfToken) {
@@ -652,25 +668,15 @@
             credentials: 'same-origin',
             body: formData,
           });
-          if (response.ok) {
-            const payload = await response.json();
-            appendMessage(payload.item, true);
+          const { data, raw } = await readJsonResponse(response);
+          if (response.ok && data?.item) {
+            appendMessage(data.item, true);
             chatForm.reset();
             return;
           }
-          let payload;
-          try {
-            payload = await response.json();
-          } catch (error) {
-            payload = null;
-          }
-          const errorMessage =
-            payload?.error ||
-            (payload?.errors ? Object.values(payload.errors).flat()[0] : null) ||
-            `Server error (${response.status})`;
-          showToast('Message not sent', errorMessage);
+          showToast('Message not sent', describeError(data, raw, response));
         } catch (error) {
-          showToast('Message not sent', 'Please try again.');
+          showToast('Message not sent', error?.message || 'Please try again.');
         }
       });
     }
