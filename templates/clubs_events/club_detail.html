@@ -44,7 +44,13 @@
 </section>
 
 <div class="club-chat-layout">
-    <section class="surface-card club-chat-panel">
+    <section
+        class="surface-card club-chat-panel"
+        data-live-chat="club"
+        data-messages-url="{% url 'clubs_events:club_channel_messages' club.pk active_channel.slug %}"
+        data-send-url="{% url 'clubs_events:club_channel_send' club.pk active_channel.slug %}"
+        data-chat-last="{% if last_message_at %}{{ last_message_at|date:'c' }}{% endif %}"
+    >
         <div class="club-chat-header">
             <div>
                 <p class="eyebrow">Channel</p>
@@ -97,7 +103,7 @@
 
         <div class="message-stream">
             {% for message_obj in messages_qs %}
-                <article class="chat-message {% if message_obj.is_system %}chat-message--system{% endif %}">
+                <article class="chat-message {% if message_obj.is_system %}chat-message--system{% endif %}" data-message-id="{{ message_obj.pk }}">
                     <div class="chat-message__header">
                         <div>
                             <strong>{% if message_obj.author %}{{ message_obj.author.display_name }}{% else %}System{% endif %}</strong>

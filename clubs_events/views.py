@@ -7,10 +7,14 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Prefetch, Q
-from django.http import Http404, HttpResponseForbidden
+from django.http import Http404, HttpResponseForbidden, HttpResponseNotAllowed, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
+from django.utils.formats import date_format
+from django.utils.html import escape
+from django.template.defaultfilters import linebreaksbr
 
 from core.models import AuditLogEntry, Notification
 from core.permissions import (
@@ -178,6 +182,87 @@ def club_list_view(request):
     )
 
 
+def _serialize_club_message(message):
+    created_at = timezone.localtime(message.created_at)
+    author_name = message.author.display_name if message.author else "System"
+    body_html = str(linebreaksbr(escape(message.text)))
+    return {
+        "id": str(message.id),
+        "author_name": author_name,
+        "created_at": message.created_at.isoformat(),
+        "created_at_display": date_format(created_at, "DATETIME_FORMAT"),
+        "body_html": body_html,
+        "is_system": message.is_system,
+    }
+
+
+def _get_club_channel_access(user, club, channel):
+    membership = ClubMembership.objects.filter(
+        club=club, user=user, status=ClubMembership.Status.ACTIVE
+    ).first()
+    is_member = bool(membership)
+    is_coordinator = bool(
+        membership and membership.local_role == ClubMembership.LocalRole.COORDINATOR
+    )
+    is_secretary = bool(
+        membership and membership.local_role == ClubMembership.LocalRole.SECRETARY
+    )
+    is_admin = is_global_admin(user)
+    can_manage_channels = is_admin or is_coordinator
+    allowed_private_channel_ids = set()
+    if not can_manage_channels:
+        allowed_private_channel_ids = set(
+            ClubChannelMember.objects.filter(channel__club=club, user=user).values_list(
+                "channel_id", flat=True
+            )
+        )
+
+    if channel.is_private:
+        if not is_member and not can_manage_channels:
+            return None
+        if not can_manage_channels and channel.id not in allowed_private_channel_ids:
+            return None
+    if (
+        channel.channel_type == ClubChannel.ChannelType.EVENT
+        and channel.event
+        and channel.event.status != Event.Status.PUBLISHED
+        and not (is_member or is_admin)
+    ):
+        return None
+
+    def can_access_channel():
+        if not channel.is_private:
+            return True
+        if can_manage_channels:
+            return True
+        if not is_member:
+            return False
+        return channel.id in allowed_private_channel_ids
+
+    def can_post_to_channel():
+        if not can_access_channel():
+            return False
+        if not (is_member or is_admin):
+            return False
+        if channel.channel_type == ClubChannel.ChannelType.WELCOME:
+            return False
+        if channel.channel_type == ClubChannel.ChannelType.ANNOUNCEMENTS:
+            return is_admin or is_coordinator or is_secretary
+        if channel.is_read_only:
+            return False
+        return True
+
+    return {
+        "is_member": is_member,
+        "is_admin": is_admin,
+        "is_coordinator": is_coordinator,
+        "is_secretary": is_secretary,
+        "can_manage_channels": can_manage_channels,
+        "can_access": can_access_channel(),
+        "can_post": can_post_to_channel(),
+    }
+
+
 @login_required
 def club_detail_view(request, pk, slug=None):
     club = get_object_or_404(Club, pk=pk)
@@ -321,6 +406,7 @@ def club_detail_view(request, pk, slug=None):
             return redirect("clubs_events:club_channel", pk=club.pk, slug=active_channel.slug)
 
     messages_qs = active_channel.messages.select_related("author")
+    last_message_at = messages_qs.last().created_at if messages_qs else None
     can_view_private_members = active_channel.is_private and can_access_channel(active_channel)
     can_add_private_members = active_channel.is_private and can_manage_channels
     if can_view_private_members:
@@ -361,8 +447,58 @@ def club_detail_view(request, pk, slug=None):
             "can_view_private_members": can_view_private_members,
             "can_add_private_members": can_add_private_members,
             "show_channel_menu": show_channel_menu,
+            "last_message_at": last_message_at,
         },
     )
+
+
+@login_required
+def club_channel_messages_view(request, pk, slug):
+    club = get_object_or_404(Club, pk=pk)
+    channel = get_object_or_404(
+        ClubChannel.objects.select_related("event"),
+        club=club,
+        slug=slug,
+        is_archived=False,
+    )
+    access = _get_club_channel_access(request.user, club, channel)
+    if not access or not access["can_access"]:
+        return JsonResponse({"error": "not_allowed"}, status=403)
+    messages_qs = channel.messages.select_related("author")
+    since = request.GET.get("since", "").strip()
+    if since:
+        parsed = parse_datetime(since)
+        if parsed:
+            if timezone.is_naive(parsed):
+                parsed = timezone.make_aware(parsed, timezone.get_current_timezone())
+            messages_qs = messages_qs.filter(created_at__gt=parsed)
+    items = [_serialize_club_message(message) for message in messages_qs]
+    return JsonResponse({"items": items})
+
+
+@login_required
+def club_channel_send_view(request, pk, slug):
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+    club = get_object_or_404(Club, pk=pk)
+    channel = get_object_or_404(
+        ClubChannel.objects.select_related("event"),
+        club=club,
+        slug=slug,
+        is_archived=False,
+    )
+    access = _get_club_channel_access(request.user, club, channel)
+    if not access or not access["can_post"]:
+        return JsonResponse({"error": "not_allowed"}, status=403)
+    form = ClubMessageForm(request.POST)
+    if not form.is_valid():
+        return JsonResponse({"errors": form.errors}, status=400)
+    message = ClubMessage.objects.create(
+        channel=channel,
+        author=request.user,
+        text=form.cleaned_data["text"],
+    )
+    return JsonResponse({"item": _serialize_club_message(message)})
 
 @login_required
 def club_join_view(request, pk):

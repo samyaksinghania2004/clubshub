@@ -7,10 +7,14 @@ from django.contrib import messages
 from django.db import IntegrityError
 from django.db.models import Count, Q
 from django.contrib.auth.decorators import login_required
-from django.http import Http404, HttpResponseForbidden
+from django.http import Http404, HttpResponseForbidden, HttpResponseNotAllowed, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
+from django.utils.formats import date_format
+from django.utils.html import escape
+from django.template.defaultfilters import linebreaksbr
 
 from core.models import AuditLogEntry, Notification
 from core.permissions import (
@@ -132,6 +136,56 @@ def _invite_allows_join(room, user):
     if invite.expires_at and invite.expires_at < timezone.now():
         return False
     return True
+
+
+def _room_access_state(room, user):
+    manager_access = can_manage_room(user, room)
+    can_review_reports = can_view_reports(user)
+    handle = RoomHandle.objects.filter(room=room, user=user).first()
+    read_only_mode = False
+    if not handle:
+        if manager_access or can_review_reports:
+            read_only_mode = True
+        else:
+            return handle, False, manager_access, can_review_reports, False
+    elif handle.status == RoomHandle.Status.PENDING:
+        if manager_access or can_review_reports:
+            read_only_mode = True
+        else:
+            return handle, False, manager_access, can_review_reports, False
+    elif handle.status == RoomHandle.Status.EXPELLED:
+        return handle, False, manager_access, can_review_reports, False
+    elif handle.status == RoomHandle.Status.LEFT:
+        return handle, False, manager_access, can_review_reports, False
+    return handle, True, manager_access, can_review_reports, read_only_mode
+
+
+def _serialize_room_message(message, viewer, show_real_identities, manager_access):
+    created_at = timezone.localtime(message.created_at)
+    identity = ""
+    if show_real_identities and message.handle and message.handle.user:
+        identity = f"{message.handle.user.display_name} ({message.handle.user.email})"
+    body_html = (
+        "This message was deleted by the author or a moderator."
+        if message.is_deleted
+        else str(linebreaksbr(escape(message.text)))
+    )
+    return {
+        "id": str(message.id),
+        "handle_name": message.handle.handle_name if message.handle else "Unknown",
+        "identity": identity,
+        "created_at": message.created_at.isoformat(),
+        "created_at_display": date_format(created_at, "DATETIME_FORMAT"),
+        "is_edited": message.is_edited,
+        "is_deleted": message.is_deleted,
+        "body_html": body_html,
+        "can_edit": message.can_be_edited_by(viewer),
+        "can_delete": message.can_be_deleted_by(viewer) or manager_access,
+        "can_report": not message.is_deleted and message.handle.user_id != viewer.id,
+        "edit_url": reverse("rooms:message_edit", args=[message.room_id, message.id]),
+        "delete_url": reverse("rooms:message_delete", args=[message.room_id, message.id]),
+        "report_url": reverse("rooms:report_message", args=[message.room_id, message.id]),
+    }
 
 
 @login_required
@@ -272,6 +326,7 @@ def room_detail_view(request, pk):
             editable_message_ids.append(message_obj.pk)
         if message_obj.can_be_deleted_by(request.user) or manager_access:
             deletable_message_ids.append(message_obj.pk)
+    last_message_at = messages_qs.last().created_at if messages_qs else None
 
     return render(
         request,
@@ -292,7 +347,62 @@ def room_detail_view(request, pk):
             "participants": participants,
             "editable_message_ids": editable_message_ids,
             "deletable_message_ids": deletable_message_ids,
+            "last_message_at": last_message_at,
         },
+    )
+
+
+@login_required
+def room_messages_view(request, pk):
+    room = get_object_or_404(
+        DiscussionRoom.objects.select_related("club", "event", "event__club"),
+        pk=pk,
+        is_archived=False,
+    )
+    handle, can_view, manager_access, can_review_reports, _ = _room_access_state(
+        room, request.user
+    )
+    if not can_view:
+        return JsonResponse({"error": "not_allowed"}, status=403)
+    messages_qs = room.messages.select_related("handle", "handle__user")
+    since = request.GET.get("since", "").strip()
+    if since:
+        parsed = parse_datetime(since)
+        if parsed:
+            if timezone.is_naive(parsed):
+                parsed = timezone.make_aware(parsed, timezone.get_current_timezone())
+            messages_qs = messages_qs.filter(created_at__gt=parsed)
+    items = [
+        _serialize_room_message(message, request.user, can_review_reports, manager_access)
+        for message in messages_qs
+    ]
+    return JsonResponse({"items": items})
+
+
+@login_required
+def room_send_view(request, pk):
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+    room = get_object_or_404(
+        DiscussionRoom.objects.select_related("club", "event", "event__club"),
+        pk=pk,
+        is_archived=False,
+    )
+    handle, can_view, manager_access, can_review_reports, read_only_mode = _room_access_state(
+        room, request.user
+    )
+    if not can_view or read_only_mode or not handle or not handle.can_post:
+        return JsonResponse({"error": "not_allowed"}, status=403)
+    form = MessageForm(request.POST)
+    if not form.is_valid():
+        return JsonResponse({"errors": form.errors}, status=400)
+    message = Message.objects.create(room=room, handle=handle, text=form.cleaned_data["text"])
+    return JsonResponse(
+        {
+            "item": _serialize_room_message(
+                message, request.user, can_review_reports, manager_access
+            )
+        }
     )
 
 

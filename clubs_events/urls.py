@@ -27,6 +27,16 @@ urlpatterns = [
         views.club_channel_delete_view,
         name="club_channel_delete",
     ),
+    path(
+        "<uuid:pk>/channels/<slug:slug>/messages/",
+        views.club_channel_messages_view,
+        name="club_channel_messages",
+    ),
+    path(
+        "<uuid:pk>/channels/<slug:slug>/send/",
+        views.club_channel_send_view,
+        name="club_channel_send",
+    ),
     path("<uuid:pk>/channels/<slug:slug>/", views.club_detail_view, name="club_channel"),
     path("<uuid:pk>/", views.club_detail_view, name="club_detail"),
     path("<uuid:pk>/join/", views.club_join_view, name="club_join"),

@@ -8,6 +8,7 @@
   const enableAlertsButton = document.querySelector('[data-enable-browser-notifications]');
   const toastRoot = document.getElementById('toast-root');
   const themeKey = 'clubshub-theme';
+  const sidebarStateKey = 'clubshub-sidebar-collapsed';
   const seenNotificationsKey = 'clubshub-seen-notification-ids';
 
   const showToast = (title, body) => {
@@ -19,6 +20,15 @@
     window.setTimeout(() => toast.remove(), 5500);
   };
 
+  const getCookie = (name) => {
+    if (!document.cookie) return '';
+    const token = document.cookie
+      .split(';')
+      .map((item) => item.trim())
+      .find((item) => item.startsWith(`${name}=`));
+    return token ? decodeURIComponent(token.split('=')[1]) : '';
+  };
+
   const loadTheme = () => {
     const saved = localStorage.getItem(themeKey);
     if (saved) {
@@ -26,10 +36,30 @@
     }
   };
 
+  const applySidebarState = () => {
+    if (!appShell) return;
+    const collapsed = localStorage.getItem(sidebarStateKey) === '1';
+    if (desktopSidebarQuery.matches && collapsed) {
+      appShell.classList.add('is-sidebar-collapsed');
+      return;
+    }
+    appShell.classList.remove('is-sidebar-collapsed');
+  };
+
+  applySidebarState();
+  if (desktopSidebarQuery.addEventListener) {
+    desktopSidebarQuery.addEventListener('change', applySidebarState);
+  }
+
   if (sidebarToggle && sidebar) {
     sidebarToggle.addEventListener('click', () => {
       if (desktopSidebarQuery.matches) {
         appShell?.classList.toggle('is-sidebar-collapsed');
+        if (appShell?.classList.contains('is-sidebar-collapsed')) {
+          localStorage.setItem(sidebarStateKey, '1');
+        } else {
+          localStorage.setItem(sidebarStateKey, '0');
+        }
       } else {
         sidebar.classList.toggle('is-open');
       }
@@ -404,6 +434,208 @@
       });
     }
   }
+
+  const liveChatPanels = document.querySelectorAll('[data-live-chat]');
+  liveChatPanels.forEach((panel) => {
+    const kind = panel.dataset.liveChat;
+    const messagesUrl = panel.dataset.messagesUrl;
+    const sendUrl = panel.dataset.sendUrl;
+    const lastInitial = panel.dataset.chatLast || '';
+    const showIdentities = panel.dataset.showIdentities === 'true';
+    const messageStream = panel.querySelector('.message-stream');
+    const chatForm = panel.querySelector('.composer-card form');
+    let lastSeen = lastInitial;
+    const seenMessageIds = new Set(
+      Array.from(messageStream?.querySelectorAll('[data-message-id]') || []).map(
+        (el) => el.dataset.messageId,
+      ),
+    );
+
+    const shouldStickToBottom = () => {
+      if (!messageStream) return false;
+      const distance =
+        messageStream.scrollHeight - messageStream.scrollTop - messageStream.clientHeight;
+      return distance < 160;
+    };
+
+    const scrollToBottom = () => {
+      if (!messageStream) return;
+      messageStream.scrollTop = messageStream.scrollHeight;
+    };
+
+    const buildRoomMessage = (item) => {
+      const messageEl = document.createElement('article');
+      messageEl.className = 'chat-message';
+      messageEl.dataset.messageId = item.id;
+
+      const header = document.createElement('div');
+      header.className = 'chat-message__header';
+      const headerInner = document.createElement('div');
+      const handleEl = document.createElement('strong');
+      handleEl.textContent = item.handle_name || 'Unknown';
+      headerInner.appendChild(handleEl);
+      if (showIdentities && item.identity) {
+        const identityEl = document.createElement('span');
+        identityEl.className = 'muted-text';
+        identityEl.textContent = `- ${item.identity}`;
+        headerInner.appendChild(identityEl);
+      }
+      const timeEl = document.createElement('span');
+      timeEl.className = 'muted-text';
+      timeEl.textContent = `- ${item.created_at_display}`;
+      headerInner.appendChild(timeEl);
+      if (item.is_edited) {
+        const editedTag = document.createElement('span');
+        editedTag.className = 'tag is-dark is-light';
+        editedTag.textContent = 'edited';
+        headerInner.appendChild(editedTag);
+      }
+      header.appendChild(headerInner);
+
+      if (item.can_edit || item.can_delete || item.can_report) {
+        const actions = document.createElement('div');
+        actions.className = 'message-actions';
+        if (item.can_edit) {
+          const editLink = document.createElement('a');
+          editLink.className = 'button is-small is-dark is-outlined';
+          editLink.href = item.edit_url;
+          editLink.textContent = 'Edit';
+          actions.appendChild(editLink);
+        }
+        if (item.can_delete) {
+          const deleteForm = document.createElement('form');
+          deleteForm.method = 'post';
+          deleteForm.action = item.delete_url;
+          deleteForm.className = 'inline-form';
+          const token = getCookie('csrftoken');
+          if (token) {
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrfmiddlewaretoken';
+            csrfInput.value = token;
+            deleteForm.appendChild(csrfInput);
+          }
+          const deleteButton = document.createElement('button');
+          deleteButton.type = 'submit';
+          deleteButton.className = 'button is-small is-dark is-outlined';
+          deleteButton.textContent = 'Delete';
+          deleteForm.appendChild(deleteButton);
+          actions.appendChild(deleteForm);
+        }
+        if (item.can_report) {
+          const reportLink = document.createElement('a');
+          reportLink.className = 'button is-small is-danger is-light';
+          reportLink.href = item.report_url;
+          reportLink.textContent = 'Report';
+          actions.appendChild(reportLink);
+        }
+        header.appendChild(actions);
+      }
+
+      const body = document.createElement('div');
+      body.className = `chat-message__body${item.is_deleted ? ' muted-message' : ''}`;
+      body.innerHTML = item.body_html;
+
+      messageEl.appendChild(header);
+      messageEl.appendChild(body);
+      return messageEl;
+    };
+
+    const buildClubMessage = (item) => {
+      const messageEl = document.createElement('article');
+      messageEl.className = `chat-message${item.is_system ? ' chat-message--system' : ''}`;
+      messageEl.dataset.messageId = item.id;
+
+      const header = document.createElement('div');
+      header.className = 'chat-message__header';
+      const headerInner = document.createElement('div');
+      const authorEl = document.createElement('strong');
+      authorEl.textContent = item.author_name || 'System';
+      headerInner.appendChild(authorEl);
+      const timeEl = document.createElement('span');
+      timeEl.className = 'muted-text';
+      timeEl.textContent = `- ${item.created_at_display}`;
+      headerInner.appendChild(timeEl);
+      if (item.is_system) {
+        const systemTag = document.createElement('span');
+        systemTag.className = 'tag is-dark is-light';
+        systemTag.textContent = 'system';
+        headerInner.appendChild(systemTag);
+      }
+      header.appendChild(headerInner);
+
+      const body = document.createElement('div');
+      body.className = 'chat-message__body';
+      body.innerHTML = item.body_html;
+
+      messageEl.appendChild(header);
+      messageEl.appendChild(body);
+      return messageEl;
+    };
+
+    const appendMessage = (item, forceScroll = false) => {
+      if (!messageStream || !item || seenMessageIds.has(item.id)) return;
+      const atBottom = shouldStickToBottom();
+      const messageEl = kind === 'room' ? buildRoomMessage(item) : buildClubMessage(item);
+      messageStream.appendChild(messageEl);
+      seenMessageIds.add(item.id);
+      lastSeen = item.created_at || lastSeen;
+      if (forceScroll || atBottom) {
+        scrollToBottom();
+      }
+    };
+
+    const pollMessages = async () => {
+      if (!messagesUrl || document.hidden) return;
+      const url = lastSeen ? `${messagesUrl}?since=${encodeURIComponent(lastSeen)}` : messagesUrl;
+      try {
+        const response = await fetch(url, {
+          headers: { 'X-Requested-With': 'XMLHttpRequest' },
+          credentials: 'same-origin',
+        });
+        if (!response.ok) return;
+        const payload = await response.json();
+        (payload.items || []).forEach((item) => appendMessage(item));
+      } catch (error) {
+        console.debug('Live chat polling failed', error);
+      }
+    };
+
+    const schedulePoll = () => {
+      window.setTimeout(async () => {
+        await pollMessages();
+        schedulePoll();
+      }, 1000);
+    };
+    schedulePoll();
+
+    if (chatForm && sendUrl) {
+      chatForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const formData = new FormData(chatForm);
+        const bodyValue = (formData.get('text') || '').toString().trim();
+        if (!bodyValue) return;
+        try {
+          const response = await fetch(sendUrl, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            credentials: 'same-origin',
+            body: formData,
+          });
+          if (response.ok) {
+            const payload = await response.json();
+            appendMessage(payload.item, true);
+            chatForm.reset();
+            return;
+          }
+          const payload = await response.json();
+          showToast('Message not sent', payload.error || 'Please try again.');
+        } catch (error) {
+          showToast('Message not sent', 'Please try again.');
+        }
+      });
+    }
+  });
 
   const focused = document.querySelector('.chat-message.is-focused');
   if (focused) {

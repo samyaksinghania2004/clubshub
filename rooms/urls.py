@@ -14,6 +14,8 @@ urlpatterns = [
         name="moderate_report",
     ),
     path("<uuid:pk>/", views.room_detail_view, name="room_detail"),
+    path("<uuid:pk>/messages/", views.room_messages_view, name="room_messages"),
+    path("<uuid:pk>/send/", views.room_send_view, name="room_send"),
     path("<uuid:pk>/edit/", views.room_edit_view, name="room_edit"),
     path("<uuid:pk>/join/", views.join_room_view, name="join_room"),
     path("<uuid:pk>/leave/", views.leave_room_view, name="leave_room"),

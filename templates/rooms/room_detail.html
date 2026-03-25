@@ -42,10 +42,17 @@
 {% endif %}
 
 <div class="room-layout">
-    <section class="surface-card room-stream-card">
+    <section
+        class="surface-card room-stream-card"
+        data-live-chat="room"
+        data-messages-url="{% url 'rooms:room_messages' room.pk %}"
+        data-send-url="{% url 'rooms:room_send' room.pk %}"
+        data-chat-last="{% if last_message_at %}{{ last_message_at|date:'c' }}{% endif %}"
+        data-show-identities="{% if show_real_identities %}true{% else %}false{% endif %}"
+    >
         <div class="message-stream">
             {% for message_obj in messages_qs %}
-                <article id="message-{{ message_obj.pk }}" class="chat-message {% if focus_message_id == message_obj.pk|stringformat:'s' %}is-focused{% endif %}">
+                <article id="message-{{ message_obj.pk }}" data-message-id="{{ message_obj.pk }}" class="chat-message {% if focus_message_id == message_obj.pk|stringformat:'s' %}is-focused{% endif %}">
                     <div class="chat-message__header">
                         <div>
                             <strong>{{ message_obj.handle.handle_name }}</strong>
