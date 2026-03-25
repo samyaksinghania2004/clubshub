@@ -68,7 +68,29 @@
                         {% if other_user %}<p class="muted-text">{{ other_user.email }}</p>{% endif %}
                     </div>
                 </div>
-                <span class="tag is-dark is-light">Direct message</span>
+                <div class="dm-chat-actions">
+                    <span class="tag is-dark is-light">Direct message</span>
+                    {% if other_user %}
+                        <details class="action-menu">
+                            <summary class="action-menu__toggle button is-dark is-outlined" aria-label="Chat options">
+                                ...
+                            </summary>
+                            <div class="action-menu__panel">
+                                {% if blocked_by_me %}
+                                    <form method="post" action="{% url 'core:inbox_block' active_thread.pk 'unblock' %}" data-confirm="Unblock {{ other_user.display_name }}?">
+                                        {% csrf_token %}
+                                        <button class="action-menu__item" type="submit">Unblock</button>
+                                    </form>
+                                {% else %}
+                                    <form method="post" action="{% url 'core:inbox_block' active_thread.pk 'block' %}" data-confirm="Block {{ other_user.display_name }}?">
+                                        {% csrf_token %}
+                                        <button class="action-menu__item is-danger" type="submit">Block</button>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        </details>
+                    {% endif %}
+                </div>
             </div>
 
             <div class="message-stream dm-message-stream">
@@ -91,16 +113,26 @@
                 {% endfor %}
             </div>
 
-            <div class="composer-card composer-card--sticky dm-composer">
-                <form method="post" class="composer-form">
-                    {% csrf_token %}
-                    <div class="composer-field">
-                        {{ message_form.body }}
-                        {% for error in message_form.body.errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
-                    </div>
-                    <button class="button is-link" type="submit">Send</button>
-                </form>
-            </div>
+            {% if can_send %}
+                <div class="composer-card composer-card--sticky dm-composer">
+                    <form method="post" class="composer-form">
+                        {% csrf_token %}
+                        <div class="composer-field">
+                            {{ message_form.body }}
+                            {% for error in message_form.body.errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
+                        </div>
+                        <button class="button is-link" type="submit">Send</button>
+                    </form>
+                </div>
+            {% else %}
+                <div class="flash-card flash-info">
+                    {% if blocked_me %}
+                        You cannot send messages because this user has blocked you.
+                    {% else %}
+                        You blocked this user. Unblock to send messages.
+                    {% endif %}
+                </div>
+            {% endif %}
         {% else %}
             <div class="empty-state">
                 <h2>Select a conversation</h2>

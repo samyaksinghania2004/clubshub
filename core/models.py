@@ -196,3 +196,23 @@ class DirectMessage(models.Model):
 
     def __str__(self) -> str:
         return f"{self.sender.display_name}: {self.body[:30]}"
+
+
+class DirectMessageBlock(models.Model):
+    blocker = models.ForeignKey(
+        "accounts.User", on_delete=models.CASCADE, related_name="blocked_users"
+    )
+    blocked = models.ForeignKey(
+        "accounts.User", on_delete=models.CASCADE, related_name="blocked_by_users"
+    )
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["blocker", "blocked"], name="unique_dm_block_pair"
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.blocker.display_name} blocked {self.blocked.display_name}"

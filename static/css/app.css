@@ -793,6 +793,12 @@ body.modal-open {
   align-items: center;
 }
 
+.dm-chat-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
 .dm-chat-identity {
   display: flex;
   align-items: center;

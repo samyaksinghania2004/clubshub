@@ -21,6 +21,11 @@ urlpatterns = [
     path("search/", views.search_view, name="search"),
     path("inbox/", views.inbox_view, name="inbox"),
     path("inbox/<uuid:thread_pk>/", views.inbox_thread_view, name="inbox_thread"),
+    path(
+        "inbox/<uuid:thread_pk>/block/<str:action>/",
+        views.inbox_block_view,
+        name="inbox_block",
+    ),
     path("users/search/", views.user_search_view, name="user_search"),
     path("help/", views.help_view, name="help"),
 ]

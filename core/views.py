@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from urllib.parse import urlencode
 
+from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.db import models
@@ -16,6 +17,7 @@ from rooms.models import DiscussionRoom
 
 from .forms import DirectMessageForm, DirectMessageStartForm, SearchForm
 from .models import (
+    DirectMessageBlock,
     DirectMessage,
     DirectMessageParticipant,
     DirectMessageThread,
@@ -155,6 +157,16 @@ def _get_or_create_dm_thread(user, recipient):
     return thread
 
 
+def _get_dm_block_state(user, other_user):
+    blocked_by_me = DirectMessageBlock.objects.filter(
+        blocker=user, blocked=other_user
+    ).exists()
+    blocked_me = DirectMessageBlock.objects.filter(
+        blocker=other_user, blocked=user
+    ).exists()
+    return blocked_by_me, blocked_me
+
+
 @login_required
 def inbox_view(request):
     start_form = DirectMessageStartForm(request.POST or None, user=request.user)
@@ -173,6 +185,9 @@ def inbox_view(request):
             "active_thread": None,
             "message_form": None,
             "dm_messages": [],
+            "can_send": False,
+            "blocked_by_me": False,
+            "blocked_me": False,
         },
     )
 
@@ -187,17 +202,29 @@ def inbox_thread_view(request, thread_pk):
         thread=thread, user=request.user
     ).first()
     message_form = DirectMessageForm(request.POST or None)
-    if request.method == "POST" and message_form.is_valid():
-        DirectMessage.objects.create(
-            thread=thread,
-            sender=request.user,
-            body=message_form.cleaned_data["body"],
-        )
-        if participant:
-            participant.last_read_at = timezone.now()
-            participant.save(update_fields=["last_read_at"])
-        thread.touch()
-        return redirect("core:inbox_thread", thread_pk=thread.pk)
+    other_user = thread.participants.exclude(id=request.user.id).first()
+    blocked_by_me = False
+    blocked_me = False
+    can_send = True
+    if other_user:
+        blocked_by_me, blocked_me = _get_dm_block_state(request.user, other_user)
+        can_send = not (blocked_by_me or blocked_me)
+
+    if request.method == "POST":
+        if not can_send:
+            messages.error(request, "You cannot send messages in this chat.")
+            return redirect("core:inbox_thread", thread_pk=thread.pk)
+        if message_form.is_valid():
+            DirectMessage.objects.create(
+                thread=thread,
+                sender=request.user,
+                body=message_form.cleaned_data["body"],
+            )
+            if participant:
+                participant.last_read_at = timezone.now()
+                participant.save(update_fields=["last_read_at"])
+            thread.touch()
+            return redirect("core:inbox_thread", thread_pk=thread.pk)
 
     if participant:
         participant.last_read_at = timezone.now()
@@ -206,12 +233,7 @@ def inbox_thread_view(request, thread_pk):
     messages_qs = thread.messages.select_related("sender")
     threads = _get_dm_threads(request.user)
     start_form = DirectMessageStartForm(user=request.user)
-    other_user = None
-    participants = list(thread.participants_meta.select_related("user").all())
-    for item in participants:
-        if item.user_id != request.user.id:
-            other_user = item.user
-            break
+
     return render(
         request,
         "core/inbox.html",
@@ -222,8 +244,35 @@ def inbox_thread_view(request, thread_pk):
             "message_form": message_form,
             "dm_messages": messages_qs,
             "other_user": other_user,
+            "can_send": can_send,
+            "blocked_by_me": blocked_by_me,
+            "blocked_me": blocked_me,
         },
     )
+
+
+@login_required
+def inbox_block_view(request, thread_pk, action):
+    if request.method != "POST":
+        return redirect("core:inbox_thread", thread_pk=thread_pk)
+    thread = get_object_or_404(
+        DirectMessageThread.objects.filter(participants=request.user),
+        pk=thread_pk,
+    )
+    other_user = thread.participants.exclude(id=request.user.id).first()
+    if not other_user:
+        return redirect("core:inbox_thread", thread_pk=thread_pk)
+    if action == "block":
+        DirectMessageBlock.objects.get_or_create(
+            blocker=request.user, blocked=other_user
+        )
+        messages.success(request, f"You blocked {other_user.display_name}.")
+    elif action == "unblock":
+        DirectMessageBlock.objects.filter(
+            blocker=request.user, blocked=other_user
+        ).delete()
+        messages.success(request, f"You unblocked {other_user.display_name}.")
+    return redirect("core:inbox_thread", thread_pk=thread_pk)
 
 
 @login_required
