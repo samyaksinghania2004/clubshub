@@ -45,7 +45,12 @@ def room_list_view(request):
         {
             "rooms": rooms.distinct(),
             "q": q,
-            "my_handles": request.user.room_handles.select_related("room"),
+            "my_handles": request.user.room_handles.filter(
+                status=RoomHandle.Status.APPROVED,
+                room__is_archived=False,
+            )
+            .select_related("room")
+            .order_by("room__name"),
             "can_create_room_any": True,
         },
     )
