@@ -13,8 +13,8 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.utils.formats import date_format
+from django.template.defaultfilters import linebreaksbr
 from django.utils.html import escape
-from django.utils.html import linebreaksbr
 
 from clubs_events.models import Club, Event
 from rooms.models import DiscussionRoom
