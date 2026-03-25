@@ -688,9 +688,16 @@ body.modal-open {
   gap: 0.5rem;
 }
 
+.room-stream-card,
+.club-chat-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 280px);
+}
+
 .room-stream-card {
   padding: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .room-announcements,
@@ -700,8 +707,32 @@ body.modal-open {
 }
 
 .message-stream {
-  max-height: 72vh;
+  flex: 1;
+  min-height: 0;
   overflow: auto;
+}
+
+.composer-card--sticky {
+  margin-top: auto;
+  position: sticky;
+  bottom: 1rem;
+  z-index: 2;
+}
+
+.composer-form {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-end;
+}
+
+.composer-field {
+  flex: 1;
+}
+
+.composer-field textarea {
+  width: 100%;
+  min-height: 3.2rem;
+  resize: vertical;
 }
 
 .chat-message.is-focused {

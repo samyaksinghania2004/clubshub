@@ -117,15 +117,16 @@
         </div>
 
         {% if can_post_messages %}
-            <div class="composer-card">
-                <h2>Post a message</h2>
-                <form method="post" class="stack-gap">
+            <div class="composer-card composer-card--sticky">
+                <form method="post" class="composer-form">
                     {% csrf_token %}
                     {% for field in form %}
-                        {{ field }}
-                        {% for error in field.errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
+                        <div class="composer-field">
+                            {{ field }}
+                            {% for error in field.errors %}<p class="help is-danger">{{ error }}</p>{% endfor %}
+                        </div>
                     {% endfor %}
-                    <button class="button is-link" type="submit">Send message</button>
+                    <button class="button is-link" type="submit">Send</button>
                 </form>
             </div>
         {% elif is_member %}
