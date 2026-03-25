@@ -175,10 +175,13 @@
         option.type = 'button';
         option.className = 'autocomplete-item';
         option.textContent = item.label || item.email || item.username;
-        option.addEventListener('click', () => {
+        const selectItem = (event) => {
+          event.preventDefault();
           input.value = item.username || '';
           clearList();
-        });
+        };
+        option.addEventListener('mousedown', selectItem);
+        option.addEventListener('touchstart', selectItem);
         list.appendChild(option);
       });
       list.classList.remove('is-hidden');
