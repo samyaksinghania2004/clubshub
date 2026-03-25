@@ -11,6 +11,13 @@
   --warning: #fbbf24;
   --success: #34d399;
   --shadow: 0 20px 60px rgba(2, 6, 23, 0.45);
+  --sidebar-width: 280px;
+  --app-main-padding: 1.5rem;
+  --app-main-padding-mobile: 1rem;
+  --layout-gap: 1rem;
+  --room-panel-width: 320px;
+  --club-panel-width: 280px;
+  --composer-space: 6rem;
 }
 
 html[data-theme="light"] {
@@ -230,7 +237,7 @@ html[data-theme="light"] .app-sidebar {
 }
 
 .app-main {
-  padding: 1.5rem;
+  padding: var(--app-main-padding);
 }
 
 .flash-stack {
@@ -710,13 +717,28 @@ body.modal-open {
   flex: 1;
   min-height: 0;
   overflow: auto;
+  padding-bottom: calc(1rem + var(--composer-space));
 }
 
 .composer-card--sticky {
-  margin-top: auto;
-  position: sticky;
+  position: fixed;
   bottom: 1rem;
-  z-index: 2;
+  left: calc(var(--sidebar-width) + var(--app-main-padding));
+  right: var(--app-main-padding);
+  z-index: 25;
+  box-shadow: var(--shadow);
+}
+
+.room-layout .composer-card--sticky {
+  right: calc(var(--app-main-padding) + var(--room-panel-width) + var(--layout-gap));
+}
+
+.club-chat-layout .composer-card--sticky {
+  right: calc(var(--app-main-padding) + var(--club-panel-width) + var(--layout-gap));
+}
+
+.app-shell.is-sidebar-collapsed .composer-card--sticky {
+  left: var(--app-main-padding);
 }
 
 .composer-form {
@@ -886,12 +908,19 @@ body.modal-open {
   }
 
   .app-main {
-    padding: 1rem;
+    padding: var(--app-main-padding-mobile);
   }
 
   .app-search {
     min-width: 0;
     width: 100%;
+  }
+
+  .composer-card--sticky,
+  .room-layout .composer-card--sticky,
+  .club-chat-layout .composer-card--sticky {
+    left: var(--app-main-padding-mobile);
+    right: var(--app-main-padding-mobile);
   }
 
   .page-hero,
