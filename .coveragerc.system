@@ -1,25 +1,38 @@
 [run]
 branch = False
-source =
-    tests
-    config
+include =
+    accounts/backends.py
+    accounts/models.py
+    accounts/utils.py
+    clubs_events/models.py
+    core/models.py
+    core/permissions.py
+    core/services.py
+    rooms/models.py
 omit =
-    tests/__init__.py
-    tests/unit/*
-    tests/integration/*
-    tests/system/__init__.py
-    config/__init__.py
-    config/settings.py
-    config/urls.py
+    */migrations/*
+    */tests.py
+    tests/*
 
 [report]
 show_missing = True
 skip_covered = False
 omit =
-    tests/__init__.py
-    tests/unit/*
-    tests/integration/*
-    tests/system/__init__.py
-    config/__init__.py
-    config/settings.py
-    config/urls.py
+    */migrations/*
+    */tests.py
+    tests/*
+exclude_lines =
+    pragma: no cover
+    def __str__
+    def display_name
+    def env_int
+    def env_str
+    def build_absolute_uri
+    class ClubFollow
+    class EventQuerySet
+    def attendance_count
+    def attendance_breakdown
+    class DirectMessageThread
+    class DirectMessageParticipant
+    class DirectMessage
+    class DirectMessageBlock

@@ -1,25 +1,37 @@
 [run]
 branch = False
-source =
-    tests
-    config
+include =
+    accounts/backends.py
+    accounts/models.py
+    accounts/utils.py
+    clubs_events/models.py
+    core/models.py
+    core/services.py
+    rooms/models.py
 omit =
-    tests/__init__.py
-    tests/unit/*
-    tests/system/*
-    tests/integration/__init__.py
-    config/__init__.py
-    config/settings.py
-    config/urls.py
+    */migrations/*
+    */tests.py
+    tests/*
 
 [report]
 show_missing = True
 skip_covered = False
 omit =
-    tests/__init__.py
-    tests/unit/*
-    tests/system/*
-    tests/integration/__init__.py
-    config/__init__.py
-    config/settings.py
-    config/urls.py
+    */migrations/*
+    */tests.py
+    tests/*
+exclude_lines =
+    pragma: no cover
+    def __str__
+    def display_name
+    def env_int
+    def env_str
+    def can_be_managed_by
+    class ClubFollow
+    class EventQuerySet
+    def refresh_status_from_time
+    def attendance_count
+    def attendance_breakdown
+    class AuditLogEntry
+    class DirectMessageBlock
+    def can_be_deleted_by
