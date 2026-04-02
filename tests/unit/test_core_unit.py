@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from datetime import timedelta
 
+from django.contrib.auth.models import AnonymousUser
 from django.test import RequestFactory, SimpleTestCase, TestCase
 from django.utils import timezone
 
@@ -75,8 +76,13 @@ class PwaViewUnitTests(SimpleTestCase):
     def setUp(self):
         self.factory = RequestFactory()
 
+    def _build_request(self, path: str):
+        request = self.factory.get(path)
+        request.user = AnonymousUser()
+        return request
+
     def test_web_manifest_view_returns_standalone_metadata(self):
-        response = web_manifest_view(self.factory.get("/manifest.webmanifest"))
+        response = web_manifest_view(self._build_request("/manifest.webmanifest"))
         payload = json.loads(response.content)
 
         self.assertEqual(response.status_code, 200)
@@ -86,7 +92,7 @@ class PwaViewUnitTests(SimpleTestCase):
         self.assertEqual(len(payload["icons"]), 3)
 
     def test_service_worker_view_returns_javascript_with_no_cache(self):
-        response = service_worker_view(self.factory.get("/service-worker.js"))
+        response = service_worker_view(self._build_request("/service-worker.js"))
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["Cache-Control"], "no-cache")
