@@ -49,18 +49,18 @@ What it does:
 ### Run integration tests with coverage
 
 ```bash
-pytest --cov tests/integration
+pytest --cov --cov-config=.coveragerc.integration tests/integration
 ```
 
 What it does:
 - Runs the tests and measures code coverage.
-- `--cov` uses the repo's `.coveragerc` to measure the main app packages.
-- The report omits migrations, central test modules, and legacy app-level `tests.py` files.
+- `--cov-config=.coveragerc.integration` uses the integration-suite coverage profile.
+- The report measures files under `tests/integration` rather than the whole application.
 
 ### Run integration tests with detailed coverage report
 
 ```bash
-pytest --cov --cov-report=term-missing tests/integration
+pytest --cov --cov-config=.coveragerc.integration --cov-report=term-missing tests/integration
 ```
 
 What it does:
@@ -112,7 +112,7 @@ Use:
 
 ```bash
 python -m pytest tests/integration
-python -m pytest --cov --cov-report=term-missing tests/integration
+python -m pytest --cov --cov-config=.coveragerc.integration --cov-report=term-missing tests/integration
 ```
 
 What it does:
@@ -142,7 +142,7 @@ Start with these two:
 
 ```bash
 pytest -v tests/integration
-pytest --cov --cov-report=term-missing tests/integration
+pytest --cov --cov-config=.coveragerc.integration --cov-report=term-missing tests/integration
 ```
 
 Why:

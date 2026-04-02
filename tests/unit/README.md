@@ -52,8 +52,8 @@ pytest --cov --cov-config=.coveragerc.unit tests/unit
 
 What it does:
 - Runs the tests and measures code coverage.
-- `--cov-config=.coveragerc.unit` uses the unit-focused coverage profile.
-- The report omits migrations, central test modules, legacy app-level `tests.py` files, and request-layer modules such as views, middleware, and management commands.
+- `--cov-config=.coveragerc.unit` uses the unit-suite coverage profile.
+- The report measures files under `tests/unit` rather than the whole application.
 
 ### Run unit tests with detailed coverage report
 
@@ -144,4 +144,4 @@ pytest --cov --cov-config=.coveragerc.unit --cov-report=term-missing tests/unit
 
 Why:
 - The first confirms whether the tests pass.
-- The second gives you a cleaner unit-coverage signal for the logic that unit tests are expected to exercise.
+- The second gives you a coverage number for the unit suite itself.

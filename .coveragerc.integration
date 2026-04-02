@@ -4,15 +4,15 @@ source =
     tests
 omit =
     tests/__init__.py
-    tests/integration/*
+    tests/unit/*
     tests/system/*
-    tests/unit/__init__.py
+    tests/integration/__init__.py
 
 [report]
 show_missing = True
 skip_covered = True
 omit =
     tests/__init__.py
-    tests/integration/*
+    tests/unit/*
     tests/system/*
-    tests/unit/__init__.py
+    tests/integration/__init__.py
