@@ -5,11 +5,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}ClubsHub{% endblock %}</title>
+    <meta name="theme-color" content="#0b1324">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="ClubsHub">
+    <link rel="manifest" href="{% url 'web_manifest' %}">
+    <link rel="icon" type="image/png" sizes="64x64" href="{% static 'icons/favicon-64.png' %}">
+    <link rel="apple-touch-icon" href="{% static 'icons/apple-touch-icon.png' %}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
     <link rel="stylesheet" href="{% static 'css/app.css' %}">
     <script>
         window.clubshubNotificationFeedUrl = "{% url 'core:notifications_feed' %}";
         window.clubshubUserSearchUrl = "{% url 'core:user_search' %}";
+        window.clubshubServiceWorkerUrl = "{% url 'service_worker' %}";
     </script>
     <script src="{% static 'js/app.js' %}" defer></script>
 </head>
@@ -18,7 +26,7 @@
     <header class="app-topbar">
         <div class="app-brand-row">
             {% if request.user.is_authenticated %}
-            <button type="button" class="app-menu-toggle button is-dark is-outlined" data-sidebar-toggle aria-label="Toggle sidebar">
+            <button type="button" class="app-menu-toggle button is-dark is-outlined" data-sidebar-toggle aria-label="Toggle sidebar" aria-controls="app-sidebar" aria-expanded="false">
                 &#9776;
             </button>
             {% endif %}
@@ -31,30 +39,33 @@
             </a>
             {% if request.user.is_authenticated %}
             <form class="app-search" action="{% url 'core:search' %}" method="get">
+                <span class="app-search-icon" aria-hidden="true">&#8981;</span>
                 <input class="input" type="search" name="q" placeholder="Search clubs, events, open rooms...">
             </form>
             {% endif %}
         </div>
         {% if request.user.is_authenticated %}
         <div class="app-topbar-actions">
-            <button type="button" class="button is-dark is-outlined" data-theme-toggle>
-                Toggle theme
-            </button>
-            <a class="button is-dark is-outlined" href="{% url 'core:notifications' %}">
-                Notifications
+            <a class="button is-dark is-outlined app-topbar-button app-topbar-button--profile" href="{% url 'accounts:profile' %}">{{ request.user.display_name }}</a>
+            <a class="button is-danger is-light app-topbar-button app-topbar-button--logout" href="{% url 'accounts:logout' %}">Log out</a>
+            <a class="button is-dark is-outlined app-topbar-button app-topbar-button--notifications" href="{% url 'core:notifications' %}" aria-label="Notifications" data-notifications-button data-notifications-page="{% if request.resolver_match.url_name == 'notifications' %}1{% else %}0{% endif %}" data-notifications-close-url="{% url 'clubs_events:event_feed' %}">
+                <span class="app-topbar-button__icon" aria-hidden="true">&#128276;</span>
+                <span class="app-topbar-button__label">Notifications</span>
                 {% if unread_notifications_count %}
                     <span class="badge-pill">{{ unread_notifications_count }}</span>
                 {% endif %}
             </a>
-            <a class="button is-dark is-outlined" href="{% url 'accounts:profile' %}">{{ request.user.display_name }}</a>
-            <a class="button is-danger is-light" href="{% url 'accounts:logout' %}">Log out</a>
+            <button type="button" class="button is-dark is-outlined app-topbar-button app-topbar-button--theme" data-theme-toggle aria-label="Toggle theme">
+                <span class="app-topbar-button__emoji" data-theme-icon aria-hidden="true">&#127769;</span>
+                <span class="app-topbar-button__label">Toggle theme</span>
+            </button>
         </div>
         {% endif %}
     </header>
 
     <div class="app-body{% if not request.user.is_authenticated %} app-body--no-sidebar{% endif %}">
         {% if request.user.is_authenticated %}
-        <aside class="app-sidebar" data-app-sidebar>
+        <aside class="app-sidebar" id="app-sidebar" data-app-sidebar aria-hidden="false">
             <div class="sidebar-group">
                 <p class="sidebar-label">Explore</p>
                 <a class="sidebar-link" href="{% url 'clubs_events:event_feed' %}">Events</a>
@@ -80,6 +91,7 @@
             </div>
             {% endif %}
         </aside>
+        <div class="app-sidebar-backdrop" data-sidebar-backdrop hidden></div>
         {% endif %}
 
         <main class="app-main">
@@ -97,6 +109,9 @@
     </div>
 </div>
 <div id="toast-root" class="toast-root"></div>
+<button type="button" class="button is-link app-install-button" data-install-app hidden>
+    Install app
+</button>
 <div class="modal is-hidden" id="confirm-modal" data-modal data-confirm-modal>
     <div class="modal__backdrop" data-modal-close></div>
     <div class="modal__panel">

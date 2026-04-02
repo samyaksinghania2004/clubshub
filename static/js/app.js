@@ -2,14 +2,20 @@
   const html = document.documentElement;
   const sidebar = document.querySelector('[data-app-sidebar]');
   const sidebarToggle = document.querySelector('[data-sidebar-toggle]');
+  const sidebarBackdrop = document.querySelector('[data-sidebar-backdrop]');
   const appShell = document.querySelector('.app-shell');
   const desktopSidebarQuery = window.matchMedia('(min-width: 1025px)');
   const themeToggle = document.querySelector('[data-theme-toggle]');
+  const themeIcon = document.querySelector('[data-theme-icon]');
+  const notificationsButton = document.querySelector('[data-notifications-button]');
+  const installButton = document.querySelector('[data-install-app]');
   const enableAlertsButton = document.querySelector('[data-enable-browser-notifications]');
   const toastRoot = document.getElementById('toast-root');
   const themeKey = 'clubshub-theme';
   const sidebarStateKey = 'clubshub-sidebar-collapsed';
   const seenNotificationsKey = 'clubshub-seen-notification-ids';
+  const liveMessagePollIntervalMs = 4000;
+  let deferredInstallPrompt = null;
 
   const showToast = (title, body) => {
     if (!toastRoot) return;
@@ -18,6 +24,12 @@
     toast.innerHTML = `<h4>${title}</h4><p>${body || ''}</p>`;
     toastRoot.appendChild(toast);
     window.setTimeout(() => toast.remove(), 5500);
+  };
+
+  const setInstallButtonVisibility = (visible) => {
+    if (!installButton) return;
+    installButton.hidden = !visible;
+    installButton.classList.toggle('is-visible', visible);
   };
 
   const getCookie = (name) => {
@@ -62,9 +74,22 @@
     }
   };
 
+  const syncThemeToggle = () => {
+    if (!themeToggle) return;
+    const isLight = html.getAttribute('data-theme') === 'light';
+    if (themeIcon) {
+      themeIcon.textContent = isLight ? '\uD83C\uDF19' : '\u2600\uFE0F';
+    }
+    themeToggle.setAttribute('aria-label', isLight ? 'Switch to dark mode' : 'Switch to light mode');
+  };
+
   const applySidebarState = () => {
     if (!appShell) return;
     const collapsed = localStorage.getItem(sidebarStateKey) === '1';
+    if (!desktopSidebarQuery.matches) {
+      appShell.classList.remove('is-sidebar-collapsed');
+      return;
+    }
     if (desktopSidebarQuery.matches && collapsed) {
       appShell.classList.add('is-sidebar-collapsed');
       return;
@@ -72,9 +97,39 @@
     appShell.classList.remove('is-sidebar-collapsed');
   };
 
+  const setMobileSidebarState = (open) => {
+    if (!sidebar || !sidebarBackdrop) return;
+    sidebar.classList.toggle('is-open', open);
+    sidebarBackdrop.classList.toggle('is-visible', open);
+    sidebarBackdrop.hidden = !open;
+    document.body.classList.toggle('sidebar-open', open);
+    if (sidebarToggle) {
+      sidebarToggle.setAttribute('aria-expanded', String(open));
+    }
+    sidebar.setAttribute('aria-hidden', String(!open));
+  };
+
+  const closeMobileSidebar = (force = false) => {
+    if (!force && desktopSidebarQuery.matches) return;
+    setMobileSidebarState(false);
+  };
+
   applySidebarState();
+  if (sidebar) {
+    if (desktopSidebarQuery.matches) {
+      sidebar.setAttribute('aria-hidden', 'false');
+    } else {
+      closeMobileSidebar(true);
+    }
+  }
   if (desktopSidebarQuery.addEventListener) {
-    desktopSidebarQuery.addEventListener('change', applySidebarState);
+    desktopSidebarQuery.addEventListener('change', () => {
+      applySidebarState();
+      closeMobileSidebar(true);
+      if (desktopSidebarQuery.matches && sidebar) {
+        sidebar.setAttribute('aria-hidden', 'false');
+      }
+    });
   }
 
   if (sidebarToggle && sidebar) {
@@ -87,17 +142,87 @@
           localStorage.setItem(sidebarStateKey, '0');
         }
       } else {
-        sidebar.classList.toggle('is-open');
+        setMobileSidebarState(!sidebar.classList.contains('is-open'));
       }
     });
   }
 
+  if (sidebarBackdrop) {
+    sidebarBackdrop.addEventListener('click', closeMobileSidebar);
+  }
+
+  if (sidebar) {
+    sidebar.querySelectorAll('a').forEach((link) => {
+      link.addEventListener('click', closeMobileSidebar);
+    });
+  }
+
   loadTheme();
+  syncThemeToggle();
   if (themeToggle) {
     themeToggle.addEventListener('click', () => {
       const next = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
       html.setAttribute('data-theme', next);
       localStorage.setItem(themeKey, next);
+      syncThemeToggle();
+    });
+  }
+
+  if ('serviceWorker' in navigator && window.clubshubServiceWorkerUrl) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register(window.clubshubServiceWorkerUrl).catch((error) => {
+        console.debug('Service worker registration failed', error);
+      });
+    });
+  }
+
+  window.addEventListener('beforeinstallprompt', (event) => {
+    event.preventDefault();
+    deferredInstallPrompt = event;
+    setInstallButtonVisibility(true);
+  });
+
+  if (installButton) {
+    installButton.addEventListener('click', async () => {
+      if (!deferredInstallPrompt) {
+        showToast('Install ClubsHub', 'Use your browser menu to add ClubsHub to the home screen.');
+        return;
+      }
+      deferredInstallPrompt.prompt();
+      try {
+        await deferredInstallPrompt.userChoice;
+      } finally {
+        deferredInstallPrompt = null;
+        setInstallButtonVisibility(false);
+      }
+    });
+  }
+
+  window.addEventListener('appinstalled', () => {
+    deferredInstallPrompt = null;
+    setInstallButtonVisibility(false);
+    showToast('ClubsHub installed', 'You can launch it from your home screen like an app.');
+  });
+
+  if (notificationsButton?.dataset.notificationsPage === '1') {
+    notificationsButton.addEventListener('click', (event) => {
+      event.preventDefault();
+      const referrer = document.referrer;
+      if (referrer) {
+        try {
+          const referrerUrl = new URL(referrer, window.location.origin);
+          if (referrerUrl.origin === window.location.origin && referrerUrl.href !== window.location.href) {
+            window.history.back();
+            return;
+          }
+        } catch (error) {
+          console.debug('Notification close referrer parse failed', error);
+        }
+      }
+      const fallbackUrl = notificationsButton.dataset.notificationsCloseUrl;
+      if (fallbackUrl) {
+        window.location.href = fallbackUrl;
+      }
     });
   }
 
@@ -136,7 +261,7 @@
 
   const pollNotifications = async () => {
     const url = window.clubshubNotificationFeedUrl;
-    if (!url) return;
+    if (!url || document.hidden) return;
     try {
       const response = await fetch(url, { credentials: 'same-origin' });
       if (!response.ok) return;
@@ -177,6 +302,24 @@
     });
   };
 
+  const actionMenus = Array.from(document.querySelectorAll('details.action-menu'));
+  actionMenus.forEach((menu) => {
+    const summary = menu.querySelector('summary');
+    if (!summary) return;
+    summary.addEventListener('click', (event) => {
+      const isOpen = menu.hasAttribute('open');
+      actionMenus.forEach((otherMenu) => {
+        if (otherMenu !== menu) {
+          otherMenu.removeAttribute('open');
+        }
+      });
+      if (isOpen) {
+        event.preventDefault();
+        menu.removeAttribute('open');
+      }
+    });
+  });
+
   document.addEventListener(
     'click',
     (event) => {
@@ -185,8 +328,6 @@
       const clickedInside = Array.from(openMenus).some((menu) => menu.contains(event.target));
       if (clickedInside) return;
       closeActionMenus();
-      event.preventDefault();
-      event.stopPropagation();
     },
     true,
   );
@@ -352,7 +493,10 @@
     const openModalEl = document.querySelector('.modal:not(.is-hidden)');
     if (openModalEl) {
       closeModal(openModalEl);
+      return;
     }
+    closeActionMenus();
+    closeMobileSidebar();
   });
 
   const dmPanel = document.querySelector('.dm-chat-panel[data-dm-thread]');
@@ -437,7 +581,7 @@
       window.setTimeout(async () => {
         await pollMessages();
         schedulePoll();
-      }, 1000);
+      }, liveMessagePollIntervalMs);
     };
     schedulePoll();
 
@@ -652,7 +796,7 @@
       window.setTimeout(async () => {
         await pollMessages();
         schedulePoll();
-      }, 1000);
+      }, liveMessagePollIntervalMs);
     };
     schedulePoll();
 
