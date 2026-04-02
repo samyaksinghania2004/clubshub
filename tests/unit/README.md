@@ -47,17 +47,18 @@ What it does:
 ### Run unit tests with coverage
 
 ```bash
-pytest --cov=. tests/unit
+pytest --cov tests/unit
 ```
 
 What it does:
 - Runs the tests and measures code coverage.
-- `--cov=.` means measure coverage for the whole current project directory.
+- `--cov` uses the repo's `.coveragerc` to measure the main app packages.
+- The report omits migrations, central test modules, and legacy app-level `tests.py` files.
 
 ### Run unit tests with detailed coverage report
 
 ```bash
-pytest --cov=. --cov-report=term-missing tests/unit
+pytest --cov --cov-report=term-missing tests/unit
 ```
 
 What it does:
@@ -108,7 +109,7 @@ Use:
 
 ```bash
 python -m pytest tests/unit
-python -m pytest --cov=. --cov-report=term-missing tests/unit
+python -m pytest --cov --cov-report=term-missing tests/unit
 ```
 
 What it does:
@@ -138,7 +139,7 @@ Start with these two:
 
 ```bash
 pytest -v tests/unit
-pytest --cov=. --cov-report=term-missing tests/unit
+pytest --cov --cov-report=term-missing tests/unit
 ```
 
 Why:

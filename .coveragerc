@@ -1,0 +1,19 @@
+[run]
+branch = True
+source =
+    accounts
+    clubs_events
+    core
+    rooms
+omit =
+    */migrations/*
+    */tests.py
+    tests/*
+
+[report]
+show_missing = True
+skip_covered = True
+omit =
+    */migrations/*
+    */tests.py
+    tests/*
