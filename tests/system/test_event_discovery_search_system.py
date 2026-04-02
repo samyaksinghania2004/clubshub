@@ -43,7 +43,7 @@ class EventDiscoveryAndSearchSystemTests(TestCase):
             local_role=ClubMembership.LocalRole.MEMBER,
         )
 
-    def test_home_event_feed_shows_upcoming_events_sorted_and_filterable(self):
+    def test_event_discovery_and_search_system_flow(self):
         early_event = Event.objects.create(
             club=self.club_beta,
             title="AI Primer",
@@ -97,10 +97,9 @@ class EventDiscoveryAndSearchSystemTests(TestCase):
             reverse("clubs_events:event_feed"),
             data={"tag": "ai"},
         )
-        self.assertContains(tag_filter_response, early_event.title)
-        self.assertNotContains(tag_filter_response, later_event.title)
+        filtered_events = list(tag_filter_response.context["events"])
+        self.assertEqual([event.title for event in filtered_events], [early_event.title])
 
-    def test_search_finds_clubs_events_and_rooms_while_restricting_unsafe_input(self):
         event = Event.objects.create(
             club=self.club_alpha,
             title="Orbit Workshop",
@@ -118,8 +117,6 @@ class EventDiscoveryAndSearchSystemTests(TestCase):
             access_type=DiscussionRoom.AccessType.PUBLIC,
             created_by=self.user,
         )
-
-        self.client.force_login(self.user)
 
         search_response = self.client.get(reverse("core:search"), data={"q": "Orbit"})
         self.assertEqual(search_response.status_code, 200)

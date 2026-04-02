@@ -45,7 +45,7 @@ class DiscussionRoomsSystemTests(TestCase):
             first_name="Bob",
         )
 
-    def test_authorized_user_can_create_public_and_restricted_rooms_and_handles_must_be_unique(self):
+    def test_discussion_rooms_system_flow(self):
         self.client.force_login(self.coordinator)
 
         public_create = self.client.post(
@@ -101,7 +101,6 @@ class DiscussionRoomsSystemTests(TestCase):
         self.assertEqual(duplicate_join.status_code, 200)
         self.assertContains(duplicate_join, "This handle is already taken in the room.")
 
-    def test_room_members_can_post_view_and_manage_their_recent_messages(self):
         room = DiscussionRoom.objects.create(
             name="Launch Pad",
             description="Talk startup ideas.",

@@ -71,7 +71,7 @@ class ModerationAndReportingSystemTests(TestCase):
             approved_at=timezone.now(),
         )
 
-    def test_participant_can_report_and_admin_can_review_delete_and_audit_the_message(self):
+    def test_moderation_and_reporting_system_flow(self):
         message = Message.objects.create(
             room=self.room,
             handle=self.offender_handle,
@@ -115,7 +115,6 @@ class ModerationAndReportingSystemTests(TestCase):
             ).exists()
         )
 
-    def test_admin_can_mute_and_reveal_expel_handles_with_audit_trail(self):
         muted_message = Message.objects.create(
             room=self.room,
             handle=self.offender_handle,

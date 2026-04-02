@@ -29,7 +29,7 @@ class UserAndRoleManagementSystemTests(TestCase):
         self.assertIsNotNone(match)
         return urlsplit(match.group(0)).path
 
-    def test_iitk_signup_verification_and_authenticated_access_to_personalized_features(self):
+    def test_user_and_role_management_system_flow(self):
         invalid_response = self.client.post(
             reverse("accounts:signup"),
             data={
@@ -94,7 +94,8 @@ class UserAndRoleManagementSystemTests(TestCase):
         profile_response = self.client.get(reverse("accounts:profile"))
         self.assertEqual(profile_response.status_code, 200)
 
-    def test_roles_and_permissions_gate_privileged_actions(self):
+        self.client.logout()
+
         start_time = timezone.now() + timedelta(days=5)
         end_time = start_time + timedelta(hours=2)
         student = User.objects.create_user(

@@ -66,7 +66,7 @@ class EventManagementAndRegistrationSystemTests(TestCase):
         payload.update(overrides)
         return payload
 
-    def test_representative_can_create_edit_and_cancel_future_event_with_reason(self):
+    def test_event_management_and_registration_system_flow(self):
         self.client.force_login(self.coordinator)
 
         create_response = self.client.post(
@@ -104,7 +104,6 @@ class EventManagementAndRegistrationSystemTests(TestCase):
         self.assertEqual(event.status, Event.Status.CANCELLED)
         self.assertEqual(event.cancellation_reason, "Speaker illness and venue unavailability.")
 
-    def test_students_can_register_waitlist_cancel_and_trigger_promotion(self):
         event = Event.objects.create(
             club=self.club,
             title="Limited Workshop",
@@ -133,10 +132,10 @@ class EventManagementAndRegistrationSystemTests(TestCase):
         self.assertEqual(registration_two.status, Registration.Status.WAITLISTED)
 
         self.client.force_login(self.student_one)
-        cancel_response = self.client.post(
+        cancel_registration = self.client.post(
             reverse("clubs_events:event_cancel_registration", args=[event.pk])
         )
-        self.assertEqual(cancel_response.status_code, 302)
+        self.assertEqual(cancel_registration.status_code, 302)
 
         registration_one.refresh_from_db()
         registration_two.refresh_from_db()

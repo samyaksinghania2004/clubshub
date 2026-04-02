@@ -61,7 +61,7 @@ class NotificationsAndAnalyticsSystemTests(TestCase):
             created_by=self.coordinator,
         )
 
-    def test_event_registration_waitlist_and_promotion_notifications_appear_in_notifications_view(self):
+    def test_notifications_and_analytics_system_flow(self):
         self.client.force_login(self.student_one)
         self.client.post(reverse("clubs_events:event_register", args=[self.event.pk]))
 
@@ -99,15 +99,24 @@ class NotificationsAndAnalyticsSystemTests(TestCase):
         self.assertContains(notifications_response, "PCB Lab")
         self.assertContains(notifications_response, "Waitlisted")
 
-    def test_analytics_dashboard_shows_registration_counts_and_attendance_percentages(self):
+        analytics_event = Event.objects.create(
+            club=self.club,
+            title="Attendance Drill",
+            description="Used to validate attendance analytics.",
+            venue="ACES Lab",
+            start_time=timezone.now() + timedelta(days=4),
+            end_time=timezone.now() + timedelta(days=4, hours=2),
+            status=Event.Status.PUBLISHED,
+            created_by=self.coordinator,
+        )
         Registration.objects.create(
-            event=self.event,
+            event=analytics_event,
             user=self.student_one,
             status=Registration.Status.REGISTERED,
             attendance=Registration.Attendance.PRESENT,
         )
         Registration.objects.create(
-            event=self.event,
+            event=analytics_event,
             user=self.student_two,
             status=Registration.Status.REGISTERED,
             attendance=Registration.Attendance.ABSENT,
@@ -116,7 +125,7 @@ class NotificationsAndAnalyticsSystemTests(TestCase):
         self.client.force_login(self.coordinator)
         analytics_response = self.client.get(reverse("clubs_events:analytics_dashboard"))
         self.assertEqual(analytics_response.status_code, 200)
-        self.assertContains(analytics_response, self.event.title)
+        self.assertContains(analytics_response, analytics_event.title)
         self.assertContains(analytics_response, "Registered:")
         self.assertContains(analytics_response, "Attendance:")
         self.assertContains(analytics_response, "50.0%")

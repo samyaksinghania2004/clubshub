@@ -53,7 +53,7 @@ class ClubAndMembershipManagementSystemTests(TestCase):
             local_role=ClubMembership.LocalRole.COORDINATOR,
         )
 
-    def test_admin_can_create_edit_deactivate_club_and_assign_representative(self):
+    def test_club_and_membership_management_system_flow(self):
         self.client.force_login(self.institute_admin)
 
         create_response = self.client.post(
@@ -84,8 +84,8 @@ class ClubAndMembershipManagementSystemTests(TestCase):
         )
         self.assertEqual(assign_response.status_code, 302)
 
-        membership = ClubMembership.objects.get(club=managed_club, user=self.student)
-        self.assertEqual(membership.local_role, ClubMembership.LocalRole.SECRETARY)
+        managed_membership = ClubMembership.objects.get(club=managed_club, user=self.student)
+        self.assertEqual(managed_membership.local_role, ClubMembership.LocalRole.SECRETARY)
 
         edit_response = self.client.post(
             reverse("clubs_events:club_edit", args=[managed_club.pk]),
@@ -105,7 +105,6 @@ class ClubAndMembershipManagementSystemTests(TestCase):
         self.assertEqual(club_list_response.status_code, 200)
         self.assertNotContains(club_list_response, "Debate Club")
 
-    def test_students_can_browse_join_leave_and_representative_can_view_members(self):
         Event.objects.create(
             club=self.club,
             title="Spring Concert",
