@@ -2,17 +2,24 @@
 branch = False
 source =
     tests
+    config
 omit =
     tests/__init__.py
     tests/unit/*
     tests/integration/*
     tests/system/__init__.py
+    config/__init__.py
+    config/settings.py
+    config/urls.py
 
 [report]
 show_missing = True
-skip_covered = True
+skip_covered = False
 omit =
     tests/__init__.py
     tests/unit/*
     tests/integration/*
     tests/system/__init__.py
+    config/__init__.py
+    config/settings.py
+    config/urls.py
