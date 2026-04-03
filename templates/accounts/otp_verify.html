@@ -1,77 +1,111 @@
 {% extends "base.html" %}
 
-{% block title %}Verify OTP · ClubsHub{% endblock %}
+{% block title %}Login with OTP - ClubsHub{% endblock %}
 
 {% block content %}
-<section class="section">
-  <div class="container" style="max-width: 720px;">
-    <h1 class="title">Verify your one-time code</h1>
-    <p class="subtitle is-6">
-      Enter the 6-digit code sent to your IITK email address.
-    </p>
+<section class="section auth-section">
+  <div class="auth-shell">
+    <div class="auth-panel auth-panel--intro">
+      <p class="eyebrow">One-time code sign in</p>
+      <h1 class="auth-title">Verify the code sent to your IITK email.</h1>
+      <p class="auth-copy">
+        This flow is useful when you do not want to use your password on the current device. Request a fresh code below if you need one.
+      </p>
 
-    <div class="box">
-      <form method="post" action="{% url 'accounts:otp_verify' %}">
-        {% csrf_token %}
-        <input type="hidden" name="next" value="{{ next }}">
+      <ul class="auth-feature-list">
+        <li>Enter the latest unused 6-digit code linked to your verified IITK account.</li>
+        <li>Requesting a fresh code keeps the OTP flow separate from the main password login page.</li>
+        <li>Once verification succeeds, ClubsHub signs you in normally and returns you to the app.</li>
+      </ul>
 
-        {% if form.non_field_errors %}
-          <div class="notification is-danger is-light">
-            {{ form.non_field_errors }}
-          </div>
-        {% endif %}
-
-        {% for field in form %}
-          <div class="field">
-            <label class="label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-            <div class="control">
-              {{ field }}
-            </div>
-            {% for error in field.errors %}
-              <p class="help is-danger">{{ error }}</p>
-            {% endfor %}
-          </div>
-        {% endfor %}
-
-        <div class="field">
-          <div class="control">
-            <button class="button is-link is-fullwidth" type="submit">
-              Verify and log in
-            </button>
-          </div>
-        </div>
-      </form>
+      <p class="auth-footer auth-footer--inline">
+        Prefer your password instead? <a href="{% url 'accounts:login' %}{% if next %}?next={{ next|urlencode }}{% endif %}">Back to password login</a>.
+      </p>
     </div>
 
-    <div class="box">
-      <h2 class="title is-6">Need a fresh code?</h2>
-      <form method="post" action="{% url 'accounts:request_login_otp' %}">
-        {% csrf_token %}
-        <input type="hidden" name="next" value="{{ next }}">
-        {% for field in otp_request_form %}
-          <div class="field">
-            <label class="label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-            <div class="control">
-              {{ field }}
-            </div>
-            {% for error in field.errors %}
-              <p class="help is-danger">{{ error }}</p>
-            {% endfor %}
+    <div class="auth-column">
+      <div class="auth-panel auth-panel--form auth-panel--primary">
+        <div class="auth-card-header">
+          <div>
+            <p class="eyebrow">Verify code</p>
+            <h2 class="auth-card-title">Finish OTP login</h2>
           </div>
-        {% endfor %}
-        <div class="field">
-          <div class="control">
-            <button class="button is-info is-light" type="submit">
-              Resend code
-            </button>
-          </div>
+          <p class="auth-note">Enter the code exactly as it appears in the email.</p>
         </div>
-      </form>
-    </div>
 
-    <p>
-      <a href="{% url 'accounts:login' %}">Back to login</a>
-    </p>
+        <form class="auth-form" method="post" action="{% url 'accounts:otp_verify' %}">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ next }}">
+
+          {% if form.non_field_errors %}
+            <div class="notification is-danger is-light">
+              {{ form.non_field_errors }}
+            </div>
+          {% endif %}
+
+          {% for field in form %}
+            <div class="field">
+              <label class="label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+              <div class="control">
+                {{ field }}
+              </div>
+              {% for error in field.errors %}
+                <p class="help is-danger">{{ error }}</p>
+              {% endfor %}
+            </div>
+          {% endfor %}
+
+          <div class="field">
+            <div class="control">
+              <button class="button is-link is-fullwidth" type="submit">
+                Verify and log in
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div class="auth-panel auth-panel--secondary">
+        <div class="auth-card-header">
+          <div>
+            <p class="eyebrow">Need a fresh code?</p>
+            <h2 class="auth-card-title">Request another OTP</h2>
+          </div>
+          <p class="auth-note">We will send a new 6-digit code to the registered IITK email if an eligible account exists.</p>
+        </div>
+
+        <form class="auth-form auth-form--compact" method="post" action="{% url 'accounts:request_login_otp' %}">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ next }}">
+
+          {% if otp_request_form.non_field_errors %}
+            <div class="notification is-danger is-light">
+              {{ otp_request_form.non_field_errors }}
+            </div>
+          {% endif %}
+
+          {% for field in otp_request_form %}
+            <div class="field">
+              <label class="label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+              <div class="control">
+                {{ field }}
+              </div>
+              {% for error in field.errors %}
+                <p class="help is-danger">{{ error }}</p>
+              {% endfor %}
+            </div>
+          {% endfor %}
+
+          <div class="field">
+            <div class="control">
+              <button class="button is-info is-fullwidth" type="submit">
+                Send one-time code
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 </section>
 {% endblock %}

@@ -217,16 +217,11 @@ def login_view(request):
     else:
         form = EmailOrUsernameAuthenticationForm(request)
 
-    otp_request_form = EmailOTPRequestForm(
-        initial={"email": request.GET.get("email", "")}
-    )
-
     return render(
         request,
         "accounts/login.html",
         {
             "form": form,
-            "otp_request_form": otp_request_form,
             "next": next_url,
         },
     )
@@ -304,12 +299,11 @@ def request_login_otp_view(request):
             params["next"] = next_url
         return redirect(f"{reverse('accounts:otp_verify')}?{urlencode(params)}")
 
-    password_form = EmailOrUsernameAuthenticationForm(request)
     return render(
         request,
-        "accounts/login.html",
+        "accounts/otp_verify.html",
         {
-            "form": password_form,
+            "form": EmailOTPVerifyForm(initial={"email": request.POST.get("email", "")}),
             "otp_request_form": form,
             "next": next_url,
         },

@@ -137,6 +137,9 @@ class AccountsFlowIntegrationTests(TestCase):
         anonymous_response = self.client.get(reverse("accounts:login"))
         self.assertEqual(anonymous_response.status_code, 200)
         self.assertIn("no-store", anonymous_response["Cache-Control"])
+        self.assertContains(anonymous_response, 'data-theme-toggle')
+        self.assertContains(anonymous_response, reverse("accounts:otp_verify"))
+        self.assertNotContains(anonymous_response, f'action="{reverse("accounts:request_login_otp")}"')
 
         user = User.objects.create_user(
             username="cacheduser",
@@ -158,6 +161,18 @@ class AccountsFlowIntegrationTests(TestCase):
         self.assertEqual(feed_response.status_code, 200)
         self.assertIn("no-store", feed_response["Cache-Control"])
         self.assertEqual(feed_response["Pragma"], "no-cache")
+
+    def test_invalid_otp_request_renders_dedicated_otp_page_with_errors(self):
+        response = self.client.post(
+            reverse("accounts:request_login_otp"),
+            data={"email": "user@example.com"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Please enter a valid IITK email address.")
+        self.assertContains(response, "Finish OTP login")
+        self.assertContains(response, f'action="{reverse("accounts:request_login_otp")}"')
+        self.assertContains(response, reverse("accounts:login"))
 
     def test_logout_requires_post_and_navigation_renders_logout_form(self):
         user = User.objects.create_user(

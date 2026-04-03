@@ -143,6 +143,10 @@ html[data-theme="light"] .app-topbar {
   margin: 0;
 }
 
+.app-topbar-actions--guest {
+  margin-left: auto;
+}
+
 .app-brand {
   display: inline-flex;
   align-items: center;
@@ -1080,6 +1084,153 @@ body.modal-open {
   display: inline-flex;
 }
 
+.auth-section {
+  padding-top: clamp(1.25rem, 2vw, 2rem);
+}
+
+.auth-shell {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 460px);
+  gap: 1.25rem;
+  align-items: stretch;
+}
+
+.auth-column {
+  display: grid;
+  gap: 1rem;
+}
+
+.auth-panel {
+  position: relative;
+  overflow: hidden;
+  padding: 1.5rem;
+  border-radius: 28px;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow);
+}
+
+.auth-panel--intro {
+  background:
+    radial-gradient(circle at top right, rgba(56, 189, 248, 0.22), transparent 34%),
+    linear-gradient(145deg, rgba(47, 116, 255, 0.18), rgba(124, 58, 237, 0.14)),
+    var(--bg-elevated);
+}
+
+.auth-panel--secondary {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 55%),
+    var(--bg-elevated);
+}
+
+.auth-title {
+  margin: 0;
+  color: var(--text);
+  font-size: clamp(2rem, 4.2vw, 3.1rem);
+  line-height: 1.02;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  max-width: 11ch;
+}
+
+.auth-copy,
+.auth-note,
+.auth-footer {
+  color: var(--muted);
+}
+
+.auth-copy {
+  margin: 1rem 0 0;
+  max-width: 52ch;
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+.auth-feature-list {
+  list-style: none;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.auth-feature-list li {
+  padding: 0.85rem 0.95rem;
+  border-radius: 18px;
+  background: rgba(8, 17, 31, 0.14);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  color: var(--text);
+  line-height: 1.55;
+}
+
+html[data-theme="light"] .auth-feature-list li {
+  background: rgba(255, 255, 255, 0.56);
+}
+
+.auth-card-header {
+  display: grid;
+  gap: 0.4rem;
+  margin-bottom: 1.15rem;
+}
+
+.auth-card-title {
+  margin: 0;
+  color: var(--text);
+  font-size: 1.55rem;
+  line-height: 1.1;
+}
+
+.auth-form {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.auth-form .field {
+  margin-bottom: 0;
+}
+
+.auth-form .button,
+.auth-panel > .button {
+  min-height: 3.25rem;
+  border-radius: 18px !important;
+  font-weight: 700;
+}
+
+.auth-form .button.is-link {
+  border: 0 !important;
+  background: linear-gradient(135deg, var(--primary-strong), #4f46e5) !important;
+  box-shadow: 0 16px 34px rgba(47, 116, 255, 0.22);
+}
+
+.auth-form .button.is-info {
+  border: 0 !important;
+  background: linear-gradient(135deg, #38bdf8, var(--primary)) !important;
+  color: #08111f !important;
+}
+
+.auth-panel > .button.is-dark.is-outlined {
+  border-color: rgba(148, 163, 184, 0.26) !important;
+  color: var(--text) !important;
+}
+
+.auth-links {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.auth-footer {
+  margin: 1.25rem auto 0;
+  text-align: center;
+}
+
+.auth-footer--inline {
+  margin: 1.25rem 0 0;
+  text-align: left;
+}
+
 .empty-state {
   padding: 2rem;
   text-align: center;
@@ -1302,6 +1453,10 @@ body.modal-open {
     gap: 0.8rem;
   }
 
+  .app-brand-row--guest {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .app-brand {
     min-width: 0;
     display: grid;
@@ -1328,6 +1483,14 @@ body.modal-open {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto auto;
     gap: 0.65rem;
+  }
+
+  .app-topbar-actions--guest {
+    width: auto;
+    justify-self: end;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
   }
 
   .app-topbar-button {
@@ -1446,6 +1609,26 @@ body.modal-open {
     border: 0 !important;
     color: #9f1239 !important;
     box-shadow: 0 12px 26px rgba(244, 114, 182, 0.16);
+  }
+
+  .auth-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-panel--intro {
+    order: 2;
+  }
+
+  .auth-column {
+    order: 1;
+  }
+
+  .auth-panel {
+    padding: 1.2rem;
+  }
+
+  .auth-title {
+    max-width: none;
   }
 
   .page-hero--club {
@@ -1567,6 +1750,10 @@ body.modal-open {
     gap: 0.58rem;
   }
 
+  .app-topbar-actions--guest {
+    width: auto;
+  }
+
   .app-topbar-button {
     min-height: 2.85rem;
     font-size: 0.92rem;
@@ -1576,6 +1763,15 @@ body.modal-open {
   .app-topbar-button--theme {
     width: 2.85rem;
     min-width: 2.85rem;
+  }
+
+  .auth-panel {
+    padding: 1.05rem;
+    border-radius: 24px;
+  }
+
+  .auth-feature-list li {
+    padding: 0.75rem 0.82rem;
   }
 }
 

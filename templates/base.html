@@ -27,7 +27,7 @@
 >
 <div class="app-shell">
     <header class="app-topbar">
-        <div class="app-brand-row">
+        <div class="app-brand-row{% if not request.user.is_authenticated %} app-brand-row--guest{% endif %}">
             {% if request.user.is_authenticated %}
             <button type="button" class="app-menu-toggle button is-dark is-outlined" data-sidebar-toggle aria-label="Toggle sidebar" aria-controls="app-sidebar" aria-expanded="false">
                 &#9776;
@@ -47,8 +47,8 @@
             </form>
             {% endif %}
         </div>
-        {% if request.user.is_authenticated %}
-        <div class="app-topbar-actions">
+        <div class="app-topbar-actions{% if not request.user.is_authenticated %} app-topbar-actions--guest{% endif %}">
+            {% if request.user.is_authenticated %}
             <a class="button is-dark is-outlined app-topbar-button app-topbar-button--profile" href="{% url 'accounts:profile' %}">{{ request.user.display_name }}</a>
             <form class="app-topbar-logout-form inline-form" action="{% url 'accounts:logout' %}" method="post">
                 {% csrf_token %}
@@ -63,12 +63,12 @@
                     <span class="badge-pill">{{ unread_notifications_count }}</span>
                 {% endif %}
             </a>
+            {% endif %}
             <button type="button" class="button is-dark is-outlined app-topbar-button app-topbar-button--theme" data-theme-toggle aria-label="Toggle theme">
                 <span class="app-topbar-button__emoji" data-theme-icon aria-hidden="true">&#127769;</span>
                 <span class="app-topbar-button__label">Toggle theme</span>
             </button>
         </div>
-        {% endif %}
     </header>
 
     <div class="app-body{% if not request.user.is_authenticated %} app-body--no-sidebar{% endif %}">
