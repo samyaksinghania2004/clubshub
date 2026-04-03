@@ -57,6 +57,10 @@ class CoreFlowIntegrationTests(TestCase):
         self.assertEqual(thread_response.status_code, 200)
         self.assertContains(thread_response, "data-chat-workspace")
         self.assertContains(thread_response, 'data-dm-thread="')
+        self.assertNotContains(thread_response, "page-hero page-hero--dm")
+        self.assertContains(thread_response, 'data-modal-target="dm-start-modal"')
+        self.assertContains(thread_response, "sidebar-thread-link")
+        self.assertContains(thread_response, "New chat")
 
         messages_response = self.client.get(reverse("core:inbox_messages", args=[thread.pk]))
         self.assertEqual(messages_response.status_code, 200)

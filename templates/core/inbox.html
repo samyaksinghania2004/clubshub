@@ -1,62 +1,36 @@
 {% extends 'base.html' %}
 {% block title %}Inbox - ClubsHub{% endblock %}
-{% block content %}
-<section class="page-hero page-hero--dm">
-    <div>
-        <p class="eyebrow">Inbox</p>
-        <h1 class="page-title">Direct messages</h1>
-        <p class="page-subtitle">Start private conversations and keep your chats organized.</p>
-    </div>
-</section>
 
-<div class="dm-layout" data-chat-workspace>
-    <aside class="surface-card dm-list-panel">
-        <div class="dm-list-header">
-            <div>
-                <h2>Messages</h2>
-                <p class="muted-text">Start a new chat or pick a thread.</p>
-            </div>
-            <span class="tag is-dark is-light">Inbox</span>
-        </div>
-        <form method="post" action="{% url 'core:inbox' %}" class="dm-start">
-            {% csrf_token %}
-            <div class="dm-start__field">
-                {{ start_form.identifier }}
-                {% for error in start_form.errors.values %}
-                    {% for message in error %}<p class="help is-danger">{{ message }}</p>{% endfor %}
-                {% endfor %}
-            </div>
-            <button class="button is-link" type="submit">Start chat</button>
-        </form>
-        <div class="dm-thread-list">
+{% block sidebar_workspace_extra %}
+    <div class="sidebar-thread-stack">
+        <button
+            type="button"
+            class="sidebar-action-link"
+            data-modal-target="dm-start-modal"
+            data-modal-focus="id_identifier"
+        >
+            New chat
+        </button>
+        <div class="sidebar-thread-list">
             {% for thread in threads %}
-                <a class="dm-thread {% if active_thread and thread.pk == active_thread.pk %}is-active{% endif %}" href="{% url 'core:inbox_thread' thread.pk %}">
-                    <div class="dm-avatar">
-                        {{ thread.other_user.display_name|default:"?"|slice:":1"|upper }}
-                    </div>
-                    <div class="dm-thread__meta">
-                        <strong>{{ thread.other_user.display_name|default:"Unknown user" }}</strong>
-                        <span class="dm-thread__preview">
-                            {% if thread.last_message_body %}
-                                {{ thread.last_message_body|truncatechars:60 }}
-                            {% else %}
-                                No messages yet.
-                            {% endif %}
-                        </span>
-                    </div>
-                    <div class="dm-thread__side">
-                        {% if thread.last_message_at %}<span class="dm-thread__time">{{ thread.last_message_at|date:"M j, g:i a" }}</span>{% endif %}
-                        {% if thread.is_unread %}<span class="dm-thread__badge" aria-label="Unread message"></span>{% endif %}
-                    </div>
+                <a
+                    class="sidebar-thread-link {% if active_thread and thread.pk == active_thread.pk %}is-active{% endif %}"
+                    href="{% url 'core:inbox_thread' thread.pk %}"
+                >
+                    <span class="sidebar-thread-link__name">{{ thread.other_user.display_name|default:"Unknown user" }}</span>
+                    {% if thread.is_unread %}<span class="sidebar-thread-link__badge" aria-label="Unread message"></span>{% endif %}
                 </a>
             {% empty %}
-                <p class="muted-text">No conversations yet.</p>
+                <p class="sidebar-note">No conversations yet.</p>
             {% endfor %}
         </div>
-    </aside>
+    </div>
+{% endblock %}
 
+{% block content %}
+<div class="dm-layout dm-layout--single" data-chat-workspace>
     <section
-        class="surface-card dm-chat-panel"
+        class="surface-card dm-chat-panel dm-chat-panel--full"
         {% if active_thread %}
             data-dm-thread="{{ active_thread.pk }}"
             data-dm-messages-url="{% url 'core:inbox_messages' active_thread.pk %}"
@@ -65,19 +39,25 @@
         {% endif %}
     >
         {% if active_thread %}
-            <div class="dm-chat-header">
+            <div class="dm-chat-header dm-chat-header--compact">
                 <div class="dm-chat-identity">
-                    <div class="dm-avatar is-large">
+                    <div class="dm-avatar">
                         {{ other_user.display_name|default:"?"|slice:":1"|upper }}
                     </div>
-                    <div>
-                        <p class="eyebrow">Chatting with</p>
-                        <h2>{{ other_user.display_name|default:"Unknown user" }}</h2>
-                        {% if other_user %}<p class="muted-text">{{ other_user.email }}</p>{% endif %}
+                    <div class="dm-chat-title">
+                        <h1>{{ other_user.display_name|default:"Unknown user" }}</h1>
+                        <p class="muted-text">Direct message</p>
                     </div>
                 </div>
                 <div class="dm-chat-actions">
-                    <span class="tag is-dark is-light">Direct message</span>
+                    <button
+                        type="button"
+                        class="button is-dark is-outlined dm-chat-actions__new"
+                        data-modal-target="dm-start-modal"
+                        data-modal-focus="id_identifier"
+                    >
+                        New chat
+                    </button>
                     {% if other_user %}
                         <details class="action-menu">
                             <summary class="action-menu__toggle button is-dark is-outlined" aria-label="Chat options">
@@ -142,11 +122,51 @@
                 </div>
             {% endif %}
         {% else %}
-            <div class="empty-state">
+            <div class="empty-state dm-empty-state">
+                <p class="eyebrow">Inbox</p>
                 <h2>Select a conversation</h2>
-                <p>Pick a chat from the list or start a new one.</p>
+                <p>Choose a chat from the sidebar or start a new one.</p>
+                <div class="dm-empty-state__actions">
+                    <button
+                        type="button"
+                        class="button is-link"
+                        data-modal-target="dm-start-modal"
+                        data-modal-focus="id_identifier"
+                    >
+                        New chat
+                    </button>
+                </div>
             </div>
         {% endif %}
     </section>
+</div>
+
+<div class="modal{% if not start_form.errors %} is-hidden{% endif %}" id="dm-start-modal" data-modal>
+    <div class="modal__backdrop" data-modal-close></div>
+    <div class="modal__panel">
+        <div class="modal__header">
+            <div>
+                <p class="eyebrow">Inbox</p>
+                <h3>Start a direct message</h3>
+            </div>
+            <button type="button" class="modal__close button is-dark is-outlined" data-modal-close>
+                Close
+            </button>
+        </div>
+        <div class="modal__body stack-gap">
+            <form method="post" action="{% url 'core:inbox' %}" class="dm-start dm-start--modal">
+                {% csrf_token %}
+                <div class="dm-start__field">
+                    {{ start_form.identifier }}
+                    {% for error in start_form.errors.values %}
+                        {% for message in error %}<p class="help is-danger">{{ message }}</p>{% endfor %}
+                    {% endfor %}
+                </div>
+                <div class="modal__actions">
+                    <button class="button is-link" type="submit">Start chat</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 {% endblock %}
