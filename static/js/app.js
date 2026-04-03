@@ -82,16 +82,18 @@
 
   const syncChatWorkspaceHeights = () => {
     if (!chatWorkspaceLayouts.length) return;
-    if (!desktopChatWorkspaceQuery.matches) {
-      chatWorkspaceLayouts.forEach((layout) => {
-        layout.style.removeProperty('--chat-workspace-height');
-      });
-      return;
-    }
     const viewportHeight = window.visualViewport?.height || window.innerHeight;
     chatWorkspaceLayouts.forEach((layout) => {
+      const useContainedHeight =
+        desktopChatWorkspaceQuery.matches ||
+        layout.classList.contains('dm-layout--threaded');
+      if (!useContainedHeight) {
+        layout.style.removeProperty('--chat-workspace-height');
+        return;
+      }
       const rect = layout.getBoundingClientRect();
-      const availableHeight = Math.max(Math.floor(viewportHeight - rect.top - 8), 420);
+      const minHeight = layout.classList.contains('dm-layout--threaded') ? 320 : 420;
+      const availableHeight = Math.max(Math.floor(viewportHeight - rect.top - 8), minHeight);
       layout.style.setProperty('--chat-workspace-height', `${availableHeight}px`);
     });
   };

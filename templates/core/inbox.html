@@ -28,7 +28,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="dm-layout dm-layout--single" data-chat-workspace>
+<div class="dm-layout dm-layout--single{% if active_thread %} dm-layout--threaded{% endif %}" data-chat-workspace>
     <section
         class="surface-card dm-chat-panel dm-chat-panel--full"
         {% if active_thread %}

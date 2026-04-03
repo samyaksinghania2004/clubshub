@@ -24,6 +24,7 @@
 <body
     data-authenticated="{% if request.user.is_authenticated %}true{% else %}false{% endif %}"
     data-route-namespace="{{ request.resolver_match.namespace|default:'' }}"
+    data-route-name="{{ request.resolver_match.url_name|default:'' }}"
 >
 <div class="app-shell">
     <header class="app-topbar">

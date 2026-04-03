@@ -1,10 +1,11 @@
 {% load static %}
-const CACHE_NAME = "clubshub-pwa-v1";
+const CACHE_NAME = "clubshub-pwa-v2";
 const OFFLINE_URL = "{% url 'core:offline' %}";
 const STATIC_ASSETS = [
   OFFLINE_URL,
   "{% static 'css/app.css' %}",
   "{% static 'js/app.js' %}",
+  "{% static 'logo/logo1.png' %}",
   "{% static 'icons/favicon-64.png' %}",
   "{% static 'icons/apple-touch-icon.png' %}",
   "{% static 'icons/icon-192.png' %}",
@@ -48,16 +49,12 @@ self.addEventListener("fetch", (event) => {
   }
 
   event.respondWith(
-    caches.match(request).then((cachedResponse) => {
-      const networkFetch = fetch(request)
-        .then((networkResponse) => {
-          const responseClone = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
-          return networkResponse;
-        })
-        .catch(() => cachedResponse);
-
-      return cachedResponse || networkFetch;
-    })
+    fetch(request)
+      .then((networkResponse) => {
+        const responseClone = networkResponse.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(request, responseClone));
+        return networkResponse;
+      })
+      .catch(() => caches.match(request))
   );
 });

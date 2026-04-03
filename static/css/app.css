@@ -1030,6 +1030,10 @@ body.modal-open {
   grid-template-columns: minmax(0, 1fr);
 }
 
+.dm-layout--threaded {
+  min-height: 0;
+}
+
 .dm-list-panel {
   padding: 1.25rem;
   display: grid;
@@ -1963,6 +1967,116 @@ html[data-theme="light"] .auth-feature-list li {
   .room-member-row {
     grid-template-columns: 1fr;
   }
+
+  body[data-route-name="inbox_thread"] .app-main {
+    padding: 0.7rem 0.7rem calc(0.7rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .dm-layout--threaded {
+    height: var(--chat-workspace-height, auto);
+    min-height: min(560px, calc(100dvh - 210px));
+    align-items: stretch;
+  }
+
+  .dm-layout--threaded > * {
+    min-height: 0;
+  }
+
+  .dm-layout--threaded .dm-chat-panel {
+    height: 100%;
+    min-height: 0;
+    padding: 0;
+    border-radius: 28px;
+    overflow: hidden;
+  }
+
+  .dm-layout--threaded .dm-chat-header {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    margin-bottom: 0;
+    padding: 0.82rem 0.9rem;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.88));
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(10px);
+  }
+
+  html[data-theme="dark"] .dm-layout--threaded .dm-chat-header {
+    background: linear-gradient(180deg, rgba(16, 27, 46, 0.98), rgba(16, 27, 46, 0.9));
+  }
+
+  .dm-layout--threaded .dm-chat-title h1 {
+    font-size: 1.28rem;
+  }
+
+  .dm-layout--threaded .dm-avatar {
+    width: 2.7rem;
+    height: 2.7rem;
+  }
+
+  .dm-layout--threaded .dm-message-stream {
+    padding: 0.8rem 0.75rem 1rem;
+    gap: 0.65rem;
+    background:
+      radial-gradient(circle at top left, rgba(56, 189, 248, 0.08), transparent 48%),
+      var(--bg);
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .dm-layout--threaded .dm-message-stream .chat-message {
+    max-width: 88%;
+  }
+
+  .dm-layout--threaded .dm-bubble {
+    padding: 0.82rem 0.9rem;
+    border-radius: 22px;
+  }
+
+  .dm-layout--threaded .chat-message__header {
+    margin-bottom: 0.32rem;
+  }
+
+  .dm-layout--threaded .chat-message__header .muted-text {
+    font-size: 0.84rem;
+  }
+
+  .dm-layout--threaded .chat-message__body {
+    font-size: 1rem;
+    line-height: 1.45;
+  }
+
+  .dm-layout--threaded .dm-composer {
+    position: sticky;
+    bottom: 0;
+    z-index: 3;
+    padding: 0.7rem 0.75rem calc(0.7rem + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--border);
+    border-radius: 0;
+    background: linear-gradient(180deg, rgba(243, 246, 251, 0.76), rgba(243, 246, 251, 0.98) 32%);
+    box-shadow: none;
+  }
+
+  html[data-theme="dark"] .dm-layout--threaded .dm-composer {
+    background: linear-gradient(180deg, rgba(8, 17, 31, 0.72), rgba(16, 27, 46, 0.98) 32%);
+  }
+
+  .dm-layout--threaded .dm-composer .composer-form {
+    gap: 0.6rem;
+    align-items: flex-end;
+  }
+
+  .dm-layout--threaded .dm-composer .composer-field textarea {
+    min-height: 2.9rem;
+    max-height: 7rem;
+    padding: 0.82rem 0.9rem;
+    border-radius: 20px !important;
+  }
+
+  .dm-layout--threaded .dm-composer .button {
+    min-width: 5.25rem;
+    min-height: 3rem;
+    border-radius: 20px !important;
+  }
 }
 
 @media (max-width: 1024px) {
@@ -2288,6 +2402,11 @@ html[data-theme="light"] .auth-feature-list li {
     right: 0.85rem;
     bottom: calc(0.85rem + env(safe-area-inset-bottom, 0px));
   }
+
+  body[data-route-name="inbox_thread"] .app-topbar {
+    gap: 0.72rem;
+    padding-bottom: 0.88rem;
+  }
 }
 
 @media (max-width: 640px) {
@@ -2332,6 +2451,29 @@ html[data-theme="light"] .auth-feature-list li {
 
   .auth-feature-list li {
     padding: 0.75rem 0.82rem;
+  }
+
+  body[data-route-name="inbox_thread"] .app-topbar {
+    padding: 0.78rem 0.72rem 0.82rem;
+    gap: 0.7rem;
+  }
+
+  body[data-route-name="inbox_thread"] .app-brand {
+    padding: 0.72rem 0.76rem;
+  }
+
+  body[data-route-name="inbox_thread"] .app-search .input {
+    min-height: 2.7rem;
+  }
+
+  body[data-route-name="inbox_thread"] .app-topbar-button {
+    min-height: 2.7rem;
+  }
+
+  body[data-route-name="inbox_thread"] .app-topbar-button--notifications,
+  body[data-route-name="inbox_thread"] .app-topbar-button--theme {
+    width: 2.7rem;
+    min-width: 2.7rem;
   }
 }
 
