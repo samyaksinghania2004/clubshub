@@ -1914,7 +1914,9 @@ html[data-theme="light"] .auth-feature-list li {
     position: fixed;
     inset: 84px auto 0 0;
     width: 280px;
-    background: var(--bg-elevated);
+    background: var(--bg-elevated) !important;
+    background-image: none !important;
+    opacity: 1 !important;
     border-right: 1px solid var(--border);
     transform: translateX(-105%);
     transition: transform 0.2s ease;
