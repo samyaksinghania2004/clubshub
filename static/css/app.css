@@ -264,6 +264,42 @@ html[data-theme="light"] .app-sidebar {
   display: none;
 }
 
+.app-sidebar-content {
+  display: block;
+}
+
+.app-sidebar-mobile-profile,
+.app-sidebar-mobile-logout-form {
+  display: none;
+}
+
+.app-sidebar-mobile-profile {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.app-sidebar-mobile-profile:hover {
+  color: var(--text);
+}
+
+.app-sidebar-mobile-profile__label {
+  display: block;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.app-sidebar-mobile-profile strong {
+  display: block;
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
+.app-sidebar-mobile-logout {
+  width: 100%;
+}
+
 .sidebar-group + .sidebar-group {
   margin-top: 1.5rem;
 }
@@ -1943,6 +1979,8 @@ html[data-theme="light"] .auth-feature-list li {
   .app-sidebar {
     position: fixed;
     inset: 84px auto 0 0;
+    display: flex;
+    flex-direction: column;
     width: 280px;
     background: var(--bg-elevated) !important;
     background-image: none !important;
@@ -1952,6 +1990,34 @@ html[data-theme="light"] .auth-feature-list li {
     transition: transform 0.2s ease;
     z-index: 25;
     box-shadow: 0 24px 48px rgba(2, 6, 23, 0.28);
+  }
+
+  .app-sidebar-content {
+    flex: 0 0 auto;
+  }
+
+  .app-sidebar-mobile-profile {
+    display: block;
+    padding: 0 0.9rem 1rem;
+    margin-bottom: 0.85rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .app-sidebar-mobile-logout-form {
+    display: block;
+    margin-top: auto;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .app-sidebar-mobile-logout {
+    min-height: 3rem;
+    border-radius: 18px !important;
+    background: linear-gradient(135deg, rgba(255, 228, 230, 0.98), rgba(254, 205, 211, 0.9)) !important;
+    border: 0 !important;
+    color: #9f1239 !important;
+    box-shadow: 0 12px 26px rgba(244, 114, 182, 0.16);
+    font-weight: 700;
   }
 
   .app-sidebar.is-open {
@@ -2335,6 +2401,13 @@ html[data-theme="light"] .auth-feature-list li {
     gap: 0.65rem;
   }
 
+  body[data-authenticated="true"] .app-topbar-actions {
+    width: auto;
+    margin-left: auto;
+    justify-self: end;
+    grid-template-columns: auto auto;
+  }
+
   .app-topbar-actions--guest {
     width: auto;
     justify-self: end;
@@ -2434,6 +2507,11 @@ html[data-theme="light"] .auth-feature-list li {
   .app-topbar-button--logout {
     min-width: 0;
     padding-inline: 0.95rem !important;
+  }
+
+  .app-topbar-button--profile,
+  .app-topbar-logout-form {
+    display: none !important;
   }
 
   .app-topbar-logout-form {
@@ -2800,6 +2878,13 @@ html[data-theme="light"] .auth-feature-list li {
   .app-topbar-actions {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto auto;
     gap: 0.58rem;
+  }
+
+  body[data-authenticated="true"] .app-topbar-actions {
+    width: auto;
+    margin-left: auto;
+    justify-self: end;
+    grid-template-columns: auto auto;
   }
 
   .app-topbar-actions--guest {

@@ -13,7 +13,7 @@
     <link rel="icon" type="image/png" href="{% static 'icons/favicon-64.png' %}?v=20260403-logo1-branding">
     <link rel="apple-touch-icon" href="{% static 'icons/apple-touch-icon.png' %}?v=20260403-logo1-branding">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
-    <link rel="stylesheet" href="{% static 'css/app.css' %}?v=20260403-mobile-keyboard-gap-fix">
+    <link rel="stylesheet" href="{% static 'css/app.css' %}?v=20260403-mobile-sidebar-account-layout">
     <script>
         window.clubshubNotificationFeedUrl = "{% url 'core:notifications_feed' %}";
         window.clubshubUserSearchUrl = "{% url 'core:user_search' %}";
@@ -75,33 +75,45 @@
     <div class="app-body{% if not request.user.is_authenticated %} app-body--no-sidebar{% endif %}">
         {% if request.user.is_authenticated %}
         <aside class="app-sidebar" id="app-sidebar" data-app-sidebar aria-hidden="false">
-            <div class="sidebar-group">
-                <a class="sidebar-link" href="{% url 'clubs_events:event_feed' %}">Events</a>
-                <a class="sidebar-link" href="{% url 'clubs_events:club_list' %}">Clubs</a>
-                <a class="sidebar-link" href="{% url 'rooms:room_list' %}">Open rooms</a>
-                <a class="sidebar-link" href="{% url 'clubs_events:my_events' %}">My activity</a>
-            </div>
-            <div class="sidebar-group">
-                <a
-                    class="sidebar-link{% if request.resolver_match.namespace == 'core' %}{% if request.resolver_match.url_name == 'inbox' or request.resolver_match.url_name == 'inbox_thread' %} is-active{% endif %}{% endif %}"
-                    href="{% url 'core:inbox' %}"
-                >
-                    Inbox
-                </a>
-                {% block sidebar_workspace_extra %}{% endblock %}
+            <a class="app-sidebar-mobile-profile" href="{% url 'accounts:profile' %}">
+                <span class="app-sidebar-mobile-profile__label">Account</span>
+                <strong>{{ request.user.display_name }}</strong>
+            </a>
+            <div class="app-sidebar-content">
+                <div class="sidebar-group">
+                    <a class="sidebar-link" href="{% url 'clubs_events:event_feed' %}">Events</a>
+                    <a class="sidebar-link" href="{% url 'clubs_events:club_list' %}">Clubs</a>
+                    <a class="sidebar-link" href="{% url 'rooms:room_list' %}">Open rooms</a>
+                    <a class="sidebar-link" href="{% url 'clubs_events:my_events' %}">My activity</a>
+                </div>
+                <div class="sidebar-group">
+                    <a
+                        class="sidebar-link{% if request.resolver_match.namespace == 'core' %}{% if request.resolver_match.url_name == 'inbox' or request.resolver_match.url_name == 'inbox_thread' %} is-active{% endif %}{% endif %}"
+                        href="{% url 'core:inbox' %}"
+                    >
+                        Inbox
+                    </a>
+                    {% block sidebar_workspace_extra %}{% endblock %}
+                    {% if request.user.role == 'institute_admin' or request.user.role == 'system_admin' %}
+                        <a class="sidebar-link" href="{% url 'clubs_events:analytics_dashboard' %}">Analytics</a>
+                        <a class="sidebar-link" href="{% url 'rooms:moderation_dashboard' %}">Reports</a>
+                    {% endif %}
+                </div>
                 {% if request.user.role == 'institute_admin' or request.user.role == 'system_admin' %}
-                    <a class="sidebar-link" href="{% url 'clubs_events:analytics_dashboard' %}">Analytics</a>
-                    <a class="sidebar-link" href="{% url 'rooms:moderation_dashboard' %}">Reports</a>
+                <div class="sidebar-group">
+                    <p class="sidebar-label">Quick actions</p>
+                    <a class="sidebar-link" href="{% url 'clubs_events:event_create' %}">Create event</a>
+                    <a class="sidebar-link" href="{% url 'rooms:room_create' %}">Create open room</a>
+                    <a class="sidebar-link" href="{% url 'clubs_events:club_create' %}">Create club</a>
+                </div>
                 {% endif %}
             </div>
-            {% if request.user.role == 'institute_admin' or request.user.role == 'system_admin' %}
-            <div class="sidebar-group">
-                <p class="sidebar-label">Quick actions</p>
-                <a class="sidebar-link" href="{% url 'clubs_events:event_create' %}">Create event</a>
-                <a class="sidebar-link" href="{% url 'rooms:room_create' %}">Create open room</a>
-                <a class="sidebar-link" href="{% url 'clubs_events:club_create' %}">Create club</a>
-            </div>
-            {% endif %}
+            <form class="app-sidebar-mobile-logout-form inline-form" action="{% url 'accounts:logout' %}" method="post">
+                {% csrf_token %}
+                <button class="button app-sidebar-mobile-logout" type="submit">
+                    Log out
+                </button>
+            </form>
         </aside>
         <div class="app-sidebar-backdrop" data-sidebar-backdrop hidden></div>
         {% endif %}

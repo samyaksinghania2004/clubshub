@@ -1,9 +1,9 @@
 {% load static %}
-const CACHE_NAME = "clubshub-pwa-v12";
+const CACHE_NAME = "clubshub-pwa-v13";
 const OFFLINE_URL = "{% url 'core:offline' %}";
 const STATIC_ASSETS = [
   OFFLINE_URL,
-  "{% static 'css/app.css' %}?v=20260403-mobile-keyboard-gap-fix",
+  "{% static 'css/app.css' %}?v=20260403-mobile-sidebar-account-layout",
   "{% static 'js/app.js' %}?v=20260403-mobile-keyboard-gap-fix",
   "{% static 'logo/logo1.png' %}",
   "{% static 'icons/favicon-64.png' %}?v=20260403-logo1-branding",
