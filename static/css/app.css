@@ -1102,6 +1102,12 @@ body.modal-open {
   gap: 1rem;
 }
 
+.auth-column--single {
+  max-width: 520px;
+  width: 100%;
+  margin: 0 auto;
+}
+
 .auth-panel {
   position: relative;
   overflow: hidden;
@@ -1123,6 +1129,11 @@ body.modal-open {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 55%),
     var(--bg-elevated);
+}
+
+.auth-panel--compact {
+  padding-top: 1.2rem;
+  padding-bottom: 1.2rem;
 }
 
 .auth-title {
@@ -1182,6 +1193,10 @@ html[data-theme="light"] .auth-feature-list li {
   line-height: 1.1;
 }
 
+.auth-card-title--hero {
+  font-size: clamp(2rem, 4vw, 2.4rem);
+}
+
 .auth-form {
   display: grid;
   gap: 0.8rem;
@@ -1229,6 +1244,11 @@ html[data-theme="light"] .auth-feature-list li {
 .auth-footer--inline {
   margin: 1.25rem 0 0;
   text-align: left;
+}
+
+.auth-shell--compact {
+  max-width: 560px;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .empty-state {

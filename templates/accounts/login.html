@@ -4,29 +4,13 @@
 
 {% block content %}
 <section class="section auth-section">
-  <div class="auth-shell">
-    <div class="auth-panel auth-panel--intro">
-      <p class="eyebrow">IIT Kanpur workspace</p>
-      <h1 class="auth-title">Sign in with one clear primary flow.</h1>
-      <p class="auth-copy">
-        Use your IITK username or email with your password to get back to clubs, events, rooms, and direct messages.
-      </p>
-
-      <ul class="auth-feature-list">
-        <li>Keep password sign-in front and center for the fastest repeat login.</li>
-        <li>Switch to email OTP only when you need it, without crowding the main page.</li>
-        <li>Use the theme toggle in the header to pick the look that feels best on your device.</li>
-      </ul>
-    </div>
-
-    <div class="auth-column">
+  <div class="auth-shell auth-shell--compact">
+    <div class="auth-column auth-column--single">
       <div class="auth-panel auth-panel--form auth-panel--primary">
         <div class="auth-card-header">
           <div>
-            <p class="eyebrow">Password login</p>
-            <h2 class="auth-card-title">Welcome back</h2>
+            <h1 class="auth-card-title auth-card-title--hero">Sign in</h1>
           </div>
-          <p class="auth-note">Sign in with your verified ClubsHub account.</p>
         </div>
 
         <form class="auth-form" method="post" action="{% url 'accounts:login' %}">
@@ -66,13 +50,11 @@
         </div>
       </div>
 
-      <div class="auth-panel auth-panel--secondary">
+      <div class="auth-panel auth-panel--secondary auth-panel--compact">
         <div class="auth-card-header">
           <div>
-            <p class="eyebrow">Alternative sign in</p>
-            <h2 class="auth-card-title">Use a one-time code</h2>
+            <h2 class="auth-card-title">Use OTP instead</h2>
           </div>
-          <p class="auth-note">Prefer email OTP for this session? Continue on the separate OTP screen.</p>
         </div>
 
         <a class="button is-dark is-outlined is-fullwidth" href="{% url 'accounts:otp_verify' %}{% if next %}?next={{ next|urlencode }}{% endif %}">
