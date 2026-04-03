@@ -2657,7 +2657,7 @@ html[data-theme="light"] .auth-feature-list li {
     width: auto;
     margin-left: auto;
     justify-self: end;
-    align-self: start;
+    align-self: end;
     display: flex;
     align-items: center;
     gap: 0.34rem;
@@ -2666,6 +2666,7 @@ html[data-theme="light"] .auth-feature-list li {
     background: rgba(255, 255, 255, 0.78);
     border: 1px solid rgba(148, 163, 184, 0.16);
     box-shadow: 0 12px 28px rgba(148, 163, 184, 0.16);
+    margin-bottom: 0.08rem;
   }
 
   html[data-theme="dark"] body[data-authenticated="true"] .app-topbar-actions {
