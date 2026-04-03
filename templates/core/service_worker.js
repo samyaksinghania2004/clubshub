@@ -1,10 +1,10 @@
 {% load static %}
-const CACHE_NAME = "clubshub-pwa-v7";
+const CACHE_NAME = "clubshub-pwa-v8";
 const OFFLINE_URL = "{% url 'core:offline' %}";
 const STATIC_ASSETS = [
   OFFLINE_URL,
-  "{% static 'css/app.css' %}?v=20260403-club-mobile-menu-fix",
-  "{% static 'js/app.js' %}?v=20260403-club-mobile-menu-fix",
+  "{% static 'css/app.css' %}?v=20260403-auth-mobile-header-fix",
+  "{% static 'js/app.js' %}?v=20260403-auth-mobile-header-fix",
   "{% static 'logo/logo1.png' %}",
   "{% static 'icons/favicon-64.png' %}",
   "{% static 'icons/apple-touch-icon.png' %}",
