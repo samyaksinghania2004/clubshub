@@ -172,6 +172,14 @@ html[data-theme="light"] .app-topbar {
   box-shadow: var(--shadow);
 }
 
+.app-brand-mark--image {
+  display: block;
+  object-fit: contain;
+  background: transparent;
+  color: inherit;
+  box-shadow: none;
+}
+
 .app-brand small {
   display: block;
   color: var(--muted);

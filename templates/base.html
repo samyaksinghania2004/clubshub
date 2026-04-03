@@ -10,8 +10,8 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="ClubsHub">
     <link rel="manifest" href="{% url 'web_manifest' %}">
-    <link rel="icon" type="image/png" sizes="64x64" href="{% static 'icons/favicon-64.png' %}">
-    <link rel="apple-touch-icon" href="{% static 'icons/apple-touch-icon.png' %}">
+    <link rel="icon" type="image/png" href="{% static 'logo/logo1.png' %}">
+    <link rel="apple-touch-icon" href="{% static 'logo/logo1.png' %}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
     <link rel="stylesheet" href="{% static 'css/app.css' %}">
     <script>
@@ -34,7 +34,7 @@
             </button>
             {% endif %}
             <a class="app-brand" href="{% if request.user.is_authenticated %}{% url 'clubs_events:event_feed' %}{% else %}{% url 'accounts:login' %}{% endif %}">
-                <span class="app-brand-mark">C</span>
+                <img class="app-brand-mark app-brand-mark--image" src="{% static 'logo/logo1.png' %}" alt="ClubsHub logo">
                 <span>
                     <strong>ClubsHub</strong>
                     <small>IIT Kanpur</small>
