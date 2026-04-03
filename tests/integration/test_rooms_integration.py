@@ -218,6 +218,9 @@ class RoomsIntegrationTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "data-chat-workspace")
+        self.assertContains(response, 'data-chat-sidepanel-toggle="room-chat-sidepanel"')
+        self.assertContains(response, 'id="room-chat-sidepanel"')
+        self.assertContains(response, "data-chat-sidepanel-drawer")
         self.assertContains(response, "room-panel-summary__title")
         self.assertContains(response, "room-member-list")
         self.assertContains(response, "StudentHandle")

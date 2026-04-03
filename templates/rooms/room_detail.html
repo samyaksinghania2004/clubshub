@@ -23,15 +23,26 @@
                 <p class="eyebrow">{{ room.get_room_type_display }} - {{ room.get_access_type_display }}</p>
                 <h2>{{ room.name }}</h2>
             </div>
-            {% if room.is_archived %}
-                <div class="club-chat-cta">
-                    <p class="muted-text">Archived room. Messages are read-only.</p>
-                </div>
-            {% elif read_only_mode %}
-                <div class="club-chat-cta">
-                    <p class="muted-text">Moderator preview mode.</p>
-                </div>
-            {% endif %}
+            <div class="room-chat-header__actions">
+                <button
+                    type="button"
+                    class="button is-dark is-outlined room-chat-info-toggle"
+                    data-chat-sidepanel-toggle="room-chat-sidepanel"
+                    aria-controls="room-chat-sidepanel"
+                    aria-expanded="false"
+                >
+                    Info
+                </button>
+                {% if room.is_archived %}
+                    <div class="club-chat-cta">
+                        <p class="muted-text">Archived room. Messages are read-only.</p>
+                    </div>
+                {% elif read_only_mode %}
+                    <div class="club-chat-cta">
+                        <p class="muted-text">Moderator preview mode.</p>
+                    </div>
+                {% endif %}
+            </div>
         </div>
 
         <div class="message-stream">
@@ -100,8 +111,33 @@
         {% endif %}
     </section>
 
-    <aside class="room-sidepanel stack-gap">
-        <article class="surface-card room-panel-card">
+    <div
+        class="room-sidepanel-drawer"
+        id="room-chat-sidepanel"
+        data-chat-sidepanel-drawer
+        aria-hidden="true"
+    >
+        <button
+            type="button"
+            class="room-sidepanel-drawer__backdrop"
+            data-chat-sidepanel-close="room-chat-sidepanel"
+            aria-label="Close room info panel"
+        ></button>
+        <aside class="room-sidepanel stack-gap" aria-label="Room details and members">
+            <div class="room-sidepanel__drawer-header">
+                <div>
+                    <p class="eyebrow">Room info</p>
+                    <h3>Members and settings</h3>
+                </div>
+                <button
+                    type="button"
+                    class="button is-dark is-outlined"
+                    data-chat-sidepanel-close="room-chat-sidepanel"
+                >
+                    Close
+                </button>
+            </div>
+            <article class="surface-card room-panel-card">
             <div class="room-panel-summary">
                 <div class="room-panel-summary__header">
                     <div>
@@ -175,47 +211,48 @@
                     {% endfor %}
                 </div>
             </div>
-        </article>
-
-        {% if can_manage_room and room.access_type == 'private_invite_only' %}
-            <article class="surface-card compact-card">
-                <div class="surface-card__header"><h2>Invite someone</h2></div>
-                <form method="post" action="{% url 'rooms:invite_user' room.pk %}" class="stack-gap">
-                    {% csrf_token %}
-                    {{ invite_form.identifier }}
-                    <button class="button is-link is-light" type="submit">Send invite</button>
-                </form>
             </article>
-        {% endif %}
 
-        {% if pending_handles %}
-            <article class="surface-card compact-card">
-                <div class="surface-card__header"><h2>Pending join requests</h2></div>
-                {% for pending in pending_handles %}
-                    <div class="pending-item">
-                        <p><strong>{{ pending.handle_name }}</strong></p>
-                        <p class="muted-text">{{ pending.user.display_name }}</p>
-                        <div class="surface-card__actions">
-                            <a class="button is-small is-link is-light" href="{% url 'rooms:approve_handle' room.pk pending.pk %}">Approve</a>
-                            <a class="button is-small is-danger is-light" href="{% url 'rooms:reject_handle' room.pk pending.pk %}">Reject</a>
+            {% if can_manage_room and room.access_type == 'private_invite_only' %}
+                <article class="surface-card compact-card">
+                    <div class="surface-card__header"><h2>Invite someone</h2></div>
+                    <form method="post" action="{% url 'rooms:invite_user' room.pk %}" class="stack-gap">
+                        {% csrf_token %}
+                        {{ invite_form.identifier }}
+                        <button class="button is-link is-light" type="submit">Send invite</button>
+                    </form>
+                </article>
+            {% endif %}
+
+            {% if pending_handles %}
+                <article class="surface-card compact-card">
+                    <div class="surface-card__header"><h2>Pending join requests</h2></div>
+                    {% for pending in pending_handles %}
+                        <div class="pending-item">
+                            <p><strong>{{ pending.handle_name }}</strong></p>
+                            <p class="muted-text">{{ pending.user.display_name }}</p>
+                            <div class="surface-card__actions">
+                                <a class="button is-small is-link is-light" href="{% url 'rooms:approve_handle' room.pk pending.pk %}">Approve</a>
+                                <a class="button is-small is-danger is-light" href="{% url 'rooms:reject_handle' room.pk pending.pk %}">Reject</a>
+                            </div>
                         </div>
-                    </div>
-                {% endfor %}
-            </article>
-        {% endif %}
-
-        {% if invites %}
-            <article class="surface-card compact-card">
-                <div class="surface-card__header"><h2>Outstanding invites</h2></div>
-                <ul class="simple-list">
-                    {% for invite in invites %}
-                        <li>{{ invite.recipient.display_name }} <span class="tag is-dark is-light">{{ invite.get_status_display }}</span></li>
-                    {% empty %}
-                        <li class="muted-text">No invites sent yet.</li>
                     {% endfor %}
-                </ul>
-            </article>
-        {% endif %}
-    </aside>
+                </article>
+            {% endif %}
+
+            {% if invites %}
+                <article class="surface-card compact-card">
+                    <div class="surface-card__header"><h2>Outstanding invites</h2></div>
+                    <ul class="simple-list">
+                        {% for invite in invites %}
+                            <li>{{ invite.recipient.display_name }} <span class="tag is-dark is-light">{{ invite.get_status_display }}</span></li>
+                        {% empty %}
+                            <li class="muted-text">No invites sent yet.</li>
+                        {% endfor %}
+                    </ul>
+                </article>
+            {% endif %}
+        </aside>
+    </div>
 </div>
 {% endblock %}
