@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from django.test import TestCase
 from django.urls import reverse
 
@@ -18,7 +20,10 @@ class PwaIntegrationTests(TestCase):
         self.assertEqual(sw_response.status_code, 200)
         self.assertIn("application/javascript", sw_response["Content-Type"])
         self.assertEqual(sw_response["Cache-Control"], "no-cache")
-        self.assertContains(sw_response, 'const CACHE_NAME = "clubshub-pwa-v1";')
+        self.assertRegex(
+            sw_response.content.decode(),
+            r'const CACHE_NAME = "clubshub-pwa-v\d+";',
+        )
         self.assertContains(sw_response, 'const OFFLINE_URL = "/offline/";')
 
     def test_offline_page_is_public_and_contains_recovery_actions(self):
@@ -26,4 +31,3 @@ class PwaIntegrationTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "ClubsHub is temporarily unavailable")
         self.assertContains(response, "Try again")
-

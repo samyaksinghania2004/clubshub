@@ -76,7 +76,7 @@ class ClubAndMembershipManagementSystemTests(TestCase):
             local_role=ClubMembership.LocalRole.MEMBER,
         )
 
-        assign_response = self.client.get(
+        assign_response = self.client.post(
             reverse(
                 "clubs_events:assign_secretary",
                 args=[managed_club.pk, self.student.pk],

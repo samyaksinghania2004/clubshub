@@ -17,6 +17,7 @@ from clubs_events.models import (
     Event,
     Registration,
 )
+from clubs_events.services import get_or_create_event_channel
 from core.models import Notification
 
 User = get_user_model()
@@ -319,6 +320,7 @@ class ClubsEventsIntegrationTests(TestCase):
         self.assertEqual(remove_channel_member_get.status_code, 405)
 
     def test_event_detail_shows_single_discuss_button_for_student(self):
+        get_or_create_event_channel(self.event, actor=self.coordinator)
         self.client.force_login(self.member)
 
         response = self.client.get(reverse("clubs_events:event_detail", args=[self.event.pk]))
