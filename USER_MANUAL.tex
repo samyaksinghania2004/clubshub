@@ -39,12 +39,31 @@
   \begin{figure}[H]
     \centering
     \IfFileExists{#1}{
-      \includegraphics[width=0.92\linewidth]{#1}
+      \includegraphics[width=0.92\linewidth,height=0.72\textheight,keepaspectratio]{#1}
     }{
       \fbox{
         \parbox[c][0.28\textheight][c]{0.88\linewidth}{
           \centering
           \textbf{Screenshot placeholder}\\[0.6em]
+          File: \texttt{#1}\\[0.6em]
+          Capture note: #3
+        }
+      }
+    }
+    \caption{#2}
+  \end{figure}
+}
+
+\newcommand{\mobileshot}[3]{
+  \begin{figure}[H]
+    \centering
+    \IfFileExists{#1}{
+      \includegraphics[width=0.42\linewidth,height=0.72\textheight,keepaspectratio]{#1}
+    }{
+      \fbox{
+        \parbox[c][0.42\textheight][c]{0.42\linewidth}{
+          \centering
+          \textbf{Mobile screenshot placeholder}\\[0.6em]
           File: \texttt{#1}\\[0.6em]
           Capture note: #3
         }
@@ -178,7 +197,7 @@ Verified users can also log in using a one-time code sent by email.
   \item Enter the code on the OTP verification page.
 \end{enumerate}
 
-\shot{screenshots/login_otp_mobile.png}
+\mobileshot{screenshots/login_otp_mobile.png}
 {Mobile OTP login flow}
 {Capture the OTP verification page on mobile after a code has been requested. Show the email field, code field, and the request-another-code section if visible.}
 
@@ -356,7 +375,7 @@ On mobile, the right panel becomes a collapsible \textbf{Info} drawer so the use
 {Club channel workspace on desktop}
 {Capture a club channel page on desktop with messages visible, the composer visible, and the right panel showing channels and members.}
 
-\shot{screenshots/club_chat_mobile_drawer.png}
+\mobileshot{screenshots/club_chat_mobile_drawer.png}
 {Club channel workspace on mobile}
 {Capture the mobile club channel page with the Info drawer open so both channel and member information are visible.}
 
@@ -418,7 +437,7 @@ The room detail page mirrors the chat-focused layout used elsewhere:
 {Open room chat on desktop}
 {Capture a room detail page on desktop with the message stream, composer, and members/settings panel visible.}
 
-\shot{screenshots/open_room_mobile_drawer.png}
+\mobileshot{screenshots/open_room_mobile_drawer.png}
 {Open room chat on mobile}
 {Capture a room detail page on mobile with the Info drawer open.}
 
@@ -460,7 +479,7 @@ The inbox was redesigned to behave like a modern chat workspace:
 {Desktop direct-message inbox}
 {Capture the inbox on desktop with the conversation list on the left and an active thread on the right.}
 
-\shot{screenshots/inbox_mobile.png}
+\mobileshot{screenshots/inbox_mobile.png}
 {Mobile direct-message inbox}
 {Capture the inbox thread view on mobile with the sticky composer visible and the latest messages loaded.}
 
@@ -566,7 +585,7 @@ ClubsHub supports both desktop and mobile use. In mobile mode:
 
 Supported browsers may offer an \textbf{Install app} prompt. When installed, ClubsHub behaves like a home-screen web app rather than a native Android or iOS application.
 
-\shot{screenshots/install_prompt_mobile.png}
+\mobileshot{screenshots/install_prompt_mobile.png}
 {Optional install prompt or installed mobile view}
 {Capture either the mobile Install app prompt or the app running from the home screen after installation.}
 
