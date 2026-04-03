@@ -1,15 +1,39 @@
 {% extends 'base.html' %}
 {% block title %}{{ event.title }} - ClubsHub{% endblock %}
 {% block content %}
-<section class="page-hero">
-    <div>
+<section class="page-hero page-hero--event">
+    <div class="event-hero-content">
         <p class="eyebrow">{{ event.club.name }}</p>
         <h1 class="page-title">{{ event.title }}</h1>
-        <p class="page-subtitle">{{ event.description }}</p>
-        <div class="meta-row">
-            <span>{{ event.venue }}</span>
-            <span>{{ event.start_time }} to {{ event.end_time }}</span>
-            <span>{% if event.capacity %}{{ event.registered_count }}/{{ event.capacity }} registered{% else %}Open capacity{% endif %}</span>
+        <div class="event-meta-grid">
+            {% if event.description %}
+                <article class="event-meta-card event-meta-card--wide">
+                    <p class="event-meta-label">About</p>
+                    <p class="event-meta-copy">{{ event.description }}</p>
+                </article>
+            {% endif %}
+            <article class="event-meta-card">
+                <p class="event-meta-label">Venue</p>
+                <p class="event-meta-value">{{ event.venue }}</p>
+            </article>
+            <article class="event-meta-card">
+                <p class="event-meta-label">Schedule</p>
+                <p class="event-meta-value">
+                    <time datetime="{{ event.start_time|date:'c' }}">{{ event.start_time }}</time>
+                    <span class="muted-text">to</span>
+                    <time datetime="{{ event.end_time|date:'c' }}">{{ event.end_time }}</time>
+                </p>
+            </article>
+            <article class="event-meta-card">
+                <p class="event-meta-label">Registration</p>
+                <p class="event-meta-value">
+                    {% if event.capacity %}
+                        {{ event.registered_count }}/{{ event.capacity }} registered
+                    {% else %}
+                        Open capacity
+                    {% endif %}
+                </p>
+            </article>
         </div>
     </div>
     <div class="hero-actions">
@@ -42,13 +66,18 @@
                 {% endif %}
             </div>
             {% for ann in announcements %}
-                <article id="announcement-{{ ann.pk }}" class="announcement-card">
+                <button
+                    id="announcement-{{ ann.pk }}"
+                    class="announcement-card announcement-card--trigger"
+                    type="button"
+                    data-modal-target="announcement-modal-{{ ann.pk }}"
+                >
                     <div class="announcement-card__header">
                         <h3>{{ ann.title }}</h3>
                         <span class="muted-text">{{ ann.created_at }}</span>
                     </div>
-                    <p>{{ ann.body|linebreaksbr }}</p>
-                </article>
+                    <span class="announcement-card__open">Open announcement</span>
+                </button>
             {% empty %}
                 <div class="empty-state compact-empty"><p>No announcements yet.</p></div>
             {% endfor %}
@@ -86,4 +115,26 @@
         </article>
     </aside>
 </div>
+{% for ann in announcements %}
+    <div class="modal is-hidden" id="announcement-modal-{{ ann.pk }}" data-modal>
+        <div class="modal__backdrop" data-modal-close></div>
+        <div class="modal__panel modal__panel--announcement">
+            <div class="modal__header">
+                <div>
+                    <p class="eyebrow">Announcement</p>
+                    <h3>{{ ann.title }}</h3>
+                    <p class="muted-text">{{ ann.created_at }}</p>
+                </div>
+                <button type="button" class="modal__close button is-dark is-outlined" data-modal-close>
+                    Close
+                </button>
+            </div>
+            <div class="modal__body">
+                <div class="announcement-modal__content">
+                    {{ ann.body|linebreaksbr }}
+                </div>
+            </div>
+        </div>
+    </div>
+{% endfor %}
 {% endblock %}

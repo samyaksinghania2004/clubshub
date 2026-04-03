@@ -197,3 +197,23 @@ class ClubsEventsIntegrationTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, ">Discuss<", count=1, html=False)
+
+    def test_event_detail_uses_labeled_meta_and_compact_announcement_cards(self):
+        Announcement.objects.create(
+            author=self.coordinator,
+            target_type=Announcement.TargetType.EVENT,
+            event=self.event,
+            title="Schedule update",
+            body="Bring your laptop and IITK ID card.",
+        )
+
+        self.client.force_login(self.member)
+        response = self.client.get(reverse("clubs_events:event_detail", args=[self.event.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "About")
+        self.assertContains(response, "Venue")
+        self.assertContains(response, "Schedule")
+        self.assertContains(response, "Registration")
+        self.assertContains(response, 'data-modal-target="announcement-modal-')
+        self.assertContains(response, "Open announcement")

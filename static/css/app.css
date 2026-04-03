@@ -319,6 +319,10 @@ html[data-theme="light"] .app-sidebar {
   background: linear-gradient(135deg, rgba(47, 116, 255, 0.22), rgba(52, 211, 153, 0.16));
 }
 
+.page-hero--event {
+  align-items: stretch;
+}
+
 .page-hero--dm {
   padding: 1.1rem 1.4rem;
   background: linear-gradient(135deg, rgba(47, 116, 255, 0.18), rgba(56, 189, 248, 0.18));
@@ -338,6 +342,56 @@ html[data-theme="light"] .app-sidebar {
 .page-subtitle,
 .muted-text {
   color: var(--muted);
+}
+
+.event-hero-content {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 1rem;
+}
+
+.event-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.event-meta-card {
+  padding: 0.95rem 1rem;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: rgba(255, 255, 255, 0.08);
+  display: grid;
+  gap: 0.35rem;
+}
+
+.event-meta-card--wide {
+  grid-column: span 3;
+}
+
+html[data-theme="light"] .event-meta-card {
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.event-meta-label {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.event-meta-value,
+.event-meta-copy {
+  margin: 0;
+  color: var(--text);
+  line-height: 1.55;
+}
+
+.event-meta-value {
+  font-weight: 600;
 }
 
 .eyebrow {
@@ -631,6 +685,52 @@ body.modal-open {
 
 .announcement-card h3 {
   margin: 0;
+}
+
+.announcement-card--trigger {
+  width: 100%;
+  text-align: left;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  appearance: none;
+  -webkit-appearance: none;
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.announcement-card--trigger:hover,
+.announcement-card--trigger:focus-visible {
+  border-color: rgba(47, 116, 255, 0.42);
+  box-shadow: 0 14px 30px rgba(47, 116, 255, 0.12);
+  transform: translateY(-1px);
+}
+
+.announcement-card--trigger:focus-visible {
+  outline: 3px solid rgba(47, 116, 255, 0.2);
+  outline-offset: 2px;
+}
+
+.announcement-card__open {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--primary);
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.announcement-card__open::after {
+  content: ">";
+}
+
+.modal__panel--announcement {
+  width: min(680px, 92vw);
+}
+
+.announcement-modal__content {
+  color: var(--text);
+  line-height: 1.7;
+  overflow-wrap: anywhere;
 }
 
 .member-list,
@@ -1680,6 +1780,14 @@ html[data-theme="light"] .auth-feature-list li {
 
   .page-hero--club .page-subtitle {
     max-width: 28ch;
+  }
+
+  .event-meta-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .event-meta-card--wide {
+    grid-column: auto;
   }
 
   .hero-actions {
