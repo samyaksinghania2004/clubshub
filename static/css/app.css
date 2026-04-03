@@ -1873,20 +1873,6 @@ html[data-theme="light"] .auth-feature-list li {
   display: none !important;
 }
 
-.install-help-steps {
-  margin: 0;
-  padding-left: 1.2rem;
-  color: var(--text);
-}
-
-.install-help-steps li + li {
-  margin-top: 0.55rem;
-}
-
-.install-help-steps strong {
-  color: var(--text-strong);
-}
-
 .muted-message {
   opacity: 0.75;
   font-style: italic;

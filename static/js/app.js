@@ -12,11 +12,6 @@
   const themeIcon = document.querySelector('[data-theme-icon]');
   const notificationsButton = document.querySelector('[data-notifications-button]');
   const installButton = document.querySelector('[data-install-app]');
-  const installHelpModal = document.getElementById('install-help-modal');
-  const installHelpTitle = installHelpModal?.querySelector('[data-install-help-title]');
-  const installHelpSummary = installHelpModal?.querySelector('[data-install-help-summary]');
-  const installHelpSteps = installHelpModal?.querySelector('[data-install-help-steps]');
-  const installHelpNote = installHelpModal?.querySelector('[data-install-help-note]');
   const enableAlertsButton = document.querySelector('[data-enable-browser-notifications]');
   const toastRoot = document.getElementById('toast-root');
   const isAuthSensitivePage =
@@ -31,21 +26,6 @@
   const keyboardOpenThresholdPx = 140;
   let deferredInstallPrompt = null;
 
-  const isStandaloneMode = () =>
-    window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true;
-
-  const isMobileViewport = () => window.matchMedia('(max-width: 1024px)').matches;
-
-  const platformInfo = () => {
-    const ua = navigator.userAgent || '';
-    return {
-      isIOS: /iPad|iPhone|iPod/i.test(ua),
-      isAndroid: /Android/i.test(ua),
-      isSamsungInternet: /SamsungBrowser/i.test(ua),
-      isChrome: /Chrome|CriOS/i.test(ua) && !/Edg|OPR/i.test(ua),
-    };
-  };
-
   const showToast = (title, body) => {
     if (!toastRoot) return;
     const toast = document.createElement('div');
@@ -59,103 +39,6 @@
     if (!installButton) return;
     installButton.hidden = !visible;
     installButton.classList.toggle('is-visible', visible);
-  };
-
-  const setInstallButtonLabel = (label) => {
-    if (!installButton) return;
-    installButton.textContent = label;
-  };
-
-  const getInstallHelpContent = () => {
-    const { isIOS, isAndroid, isSamsungInternet, isChrome } = platformInfo();
-    if (deferredInstallPrompt) {
-      return {
-        label: 'Install app',
-        title: 'Install ClubsHub',
-        summary: 'Your browser supports app installation for this site.',
-        steps: [
-          'Tap the install button.',
-          'Approve the browser prompt.',
-          'Open ClubsHub from your home screen after installation.',
-        ],
-        note: '',
-      };
-    }
-    if (isIOS) {
-      return {
-        label: 'Add to Home Screen',
-        title: 'Add ClubsHub to your home screen',
-        summary: 'Safari on iPhone and iPad uses a manual Add to Home Screen flow.',
-        steps: [
-          'Open the Share menu in Safari.',
-          'Tap Add to Home Screen.',
-          'Confirm the name and save it.',
-        ],
-        note: window.isSecureContext
-          ? ''
-          : 'This site is currently running on HTTP. Some install-like behavior may be limited until it is served over HTTPS or localhost.',
-      };
-    }
-    if (isAndroid) {
-      return {
-        label: 'Install app',
-        title: 'Install ClubsHub on Android',
-        summary: 'If your browser does not show a direct install prompt, use the browser menu.',
-        steps: [
-          `Open the ${isSamsungInternet ? 'browser menu' : 'three-dot menu'}.`,
-          `Tap ${isSamsungInternet ? 'Add page to' : isChrome ? 'Add to Home screen or Install app' : 'Add to Home screen'}.`,
-          'Confirm the install or home-screen shortcut.',
-        ],
-        note: window.isSecureContext
-          ? ''
-          : 'This site is currently served over HTTP. Full PWA install prompts usually require HTTPS or localhost, but your browser may still allow Add to Home screen.',
-      };
-    }
-    return {
-      label: 'Install app',
-      title: 'Install ClubsHub',
-      summary: 'Use your browser menu to add this site to your device if supported.',
-      steps: [
-        'Open the browser menu.',
-        'Look for Install app or Add to Home screen.',
-        'Confirm the install if the browser offers it.',
-      ],
-      note: window.isSecureContext
-        ? ''
-        : 'This site is currently served over HTTP. Full web-app installation usually requires HTTPS or localhost.',
-    };
-  };
-
-  const syncInstallEntry = () => {
-    if (!installButton) return;
-    if (isStandaloneMode() || !isMobileViewport()) {
-      setInstallButtonVisibility(false);
-      return;
-    }
-    const help = getInstallHelpContent();
-    setInstallButtonLabel(help.label);
-    setInstallButtonVisibility(true);
-  };
-
-  const showInstallHelp = () => {
-    if (!installHelpModal || !installHelpSteps) {
-      showToast('Install ClubsHub', 'Use your browser menu to add ClubsHub to the home screen.');
-      return;
-    }
-    const help = getInstallHelpContent();
-    if (installHelpTitle) installHelpTitle.textContent = help.title;
-    if (installHelpSummary) installHelpSummary.textContent = help.summary;
-    installHelpSteps.innerHTML = '';
-    help.steps.forEach((step) => {
-      const item = document.createElement('li');
-      item.textContent = step;
-      installHelpSteps.appendChild(item);
-    });
-    if (installHelpNote) {
-      installHelpNote.textContent = help.note;
-      installHelpNote.hidden = !help.note;
-    }
-    openModal(installHelpModal);
   };
 
   const getCookie = (name) => {
@@ -436,13 +319,13 @@
   window.addEventListener('beforeinstallprompt', (event) => {
     event.preventDefault();
     deferredInstallPrompt = event;
-    syncInstallEntry();
+    setInstallButtonVisibility(true);
   });
 
   if (installButton) {
     installButton.addEventListener('click', async () => {
       if (!deferredInstallPrompt) {
-        showInstallHelp();
+        showToast('Install ClubsHub', 'Use your browser menu to add ClubsHub to the home screen.');
         return;
       }
       deferredInstallPrompt.prompt();
@@ -450,7 +333,7 @@
         await deferredInstallPrompt.userChoice;
       } finally {
         deferredInstallPrompt = null;
-        syncInstallEntry();
+        setInstallButtonVisibility(false);
       }
     });
   }
@@ -460,9 +343,6 @@
     setInstallButtonVisibility(false);
     showToast('ClubsHub installed', 'You can launch it from your home screen like an app.');
   });
-
-  syncInstallEntry();
-  window.addEventListener('resize', syncInstallEntry);
 
   if (notificationsButton?.dataset.notificationsPage === '1') {
     notificationsButton.addEventListener('click', (event) => {

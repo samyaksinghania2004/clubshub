@@ -13,13 +13,13 @@
     <link rel="icon" type="image/png" href="{% static 'logo/logo1.png' %}">
     <link rel="apple-touch-icon" href="{% static 'logo/logo1.png' %}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
-    <link rel="stylesheet" href="{% static 'css/app.css' %}?v=20260403-install-fallback">
+    <link rel="stylesheet" href="{% static 'css/app.css' %}?v=20260403-mobile-keyboard-gap-fix">
     <script>
         window.clubshubNotificationFeedUrl = "{% url 'core:notifications_feed' %}";
         window.clubshubUserSearchUrl = "{% url 'core:user_search' %}";
         window.clubshubServiceWorkerUrl = "{% url 'service_worker' %}";
     </script>
-    <script src="{% static 'js/app.js' %}?v=20260403-install-fallback" defer></script>
+    <script src="{% static 'js/app.js' %}?v=20260403-mobile-keyboard-gap-fix" defer></script>
 </head>
 <body
     data-authenticated="{% if request.user.is_authenticated %}true{% else %}false{% endif %}"
@@ -124,25 +124,6 @@
 <button type="button" class="button is-link app-install-button" data-install-app hidden>
     Install app
 </button>
-<div class="modal is-hidden" id="install-help-modal" data-modal>
-    <div class="modal__backdrop" data-modal-close></div>
-    <div class="modal__panel">
-        <div class="modal__header">
-            <div>
-                <p class="eyebrow">Install ClubsHub</p>
-                <h3 data-install-help-title>Install on this device</h3>
-            </div>
-            <button type="button" class="modal__close button is-dark is-outlined" data-modal-close>
-                Close
-            </button>
-        </div>
-        <div class="modal__body stack-gap">
-            <p class="muted-text" data-install-help-summary></p>
-            <ol class="install-help-steps" data-install-help-steps></ol>
-            <p class="help" data-install-help-note></p>
-        </div>
-    </div>
-</div>
 <div class="modal is-hidden" id="confirm-modal" data-modal data-confirm-modal>
     <div class="modal__backdrop" data-modal-close></div>
     <div class="modal__panel">
