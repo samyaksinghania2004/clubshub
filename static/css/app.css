@@ -980,6 +980,14 @@ body.modal-open {
   padding: 1.25rem;
 }
 
+.club-chat-panel {
+  padding: 1rem;
+}
+
+.club-channel-panel {
+  padding: 1rem;
+}
+
 .club-chat-panel,
 .club-channel-panel,
 .room-sidepanel {
@@ -990,15 +998,73 @@ body.modal-open {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1rem;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
   flex-wrap: wrap;
+}
+
+.club-chat-header h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 1.45rem;
 }
 
 .club-chat-cta {
   display: grid;
   gap: 0.5rem;
   max-width: 260px;
+}
+
+.club-panel-summary {
+  display: grid;
+  gap: 0.75rem;
+  padding-bottom: 0.95rem;
+  margin-bottom: 0.95rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.club-panel-summary__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.club-panel-summary__title {
+  margin: 0;
+  color: var(--text);
+  font-size: 1.35rem;
+  line-height: 1.08;
+}
+
+.club-panel-summary__copy {
+  margin: 0;
+  line-height: 1.55;
+}
+
+.club-panel-summary__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.club-panel-summary__form {
+  margin: 0;
+}
+
+.club-panel-summary__menu .action-menu__toggle {
+  min-width: 2.8rem;
+}
+
+.club-leave-button {
+  min-height: auto !important;
+  padding: 0.5rem 0.9rem !important;
+  border-radius: 999px !important;
+  background: rgba(248, 113, 113, 0.12) !important;
+  border: 1px solid rgba(248, 113, 113, 0.24) !important;
+  color: #dc2626 !important;
+  font-weight: 700;
 }
 
 .channel-group + .channel-group {
@@ -1074,9 +1140,12 @@ body.modal-open {
 }
 
 .room-announcements,
-.message-stream,
-.composer-card {
+.message-stream {
   padding: 1rem 1.1rem;
+}
+
+.composer-card {
+  padding: 0.75rem 0.85rem;
 }
 
 .message-stream {
@@ -1097,7 +1166,7 @@ body.modal-open {
 
 .composer-form {
   display: flex;
-  gap: 0.75rem;
+  gap: 0.65rem;
   align-items: flex-end;
 }
 
@@ -1107,8 +1176,13 @@ body.modal-open {
 
 .composer-field textarea {
   width: 100%;
-  min-height: 3.2rem;
+  min-height: 2.55rem;
+  max-height: 9rem;
   resize: vertical;
+}
+
+.composer-card .button {
+  min-height: 2.8rem;
 }
 
 .chat-message.is-focused {
@@ -1870,6 +1944,12 @@ html[data-theme="light"] .auth-feature-list li {
 
   .club-chat-header {
     gap: 0.8rem;
+  }
+
+  .club-panel-summary__header,
+  .club-panel-summary__meta {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .message-stream {

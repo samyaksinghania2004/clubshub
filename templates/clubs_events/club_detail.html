@@ -1,52 +1,6 @@
 {% extends 'base.html' %}
 {% block title %}{{ club.name }} - ClubsHub{% endblock %}
 {% block content %}
-<section class="page-hero page-hero--club">
-    <div>
-        <p class="eyebrow">{{ club.category }}</p>
-        <h1 class="page-title">{{ club.name }}</h1>
-        <p class="page-subtitle">{{ club.description }}</p>
-    </div>
-    <div class="hero-actions">
-        {% if membership and membership.status == 'active' %}
-            <span class="tag is-link is-light club-membership-badge">You are {{ membership.get_local_role_display }}</span>
-            <form class="club-leave-inline club-leave-inline--mobile" method="post" action="{% url 'clubs_events:club_leave' club.pk %}" data-confirm="Leave {{ club.name }}?">
-                {% csrf_token %}
-                <button class="button is-small club-leave-button" type="submit">Leave group</button>
-            </form>
-        {% else %}
-            <form method="post" action="{% url 'clubs_events:club_join' club.pk %}">
-                {% csrf_token %}
-                <button class="button is-link" type="submit">Join club</button>
-            </form>
-        {% endif %}
-        {% if can_manage_club or can_create_event_for_club or can_create_channel or membership %}
-            <details class="action-menu club-hero-menu {% if membership and membership.status == 'active' and not can_manage_club and not can_create_event_for_club and not can_create_channel %}club-hero-menu--member-only{% endif %}">
-                <summary class="action-menu__toggle button is-dark is-outlined" aria-label="Club options">
-                    ...
-                </summary>
-                <div class="action-menu__panel">
-                    {% if can_manage_club %}
-                        <a class="action-menu__item" href="{% url 'clubs_events:club_edit' club.pk %}">Edit club</a>
-                    {% endif %}
-                    {% if can_create_event_for_club %}
-                        <a class="action-menu__item" href="{% url 'clubs_events:event_create' %}?club={{ club.pk }}">New event</a>
-                    {% endif %}
-                    {% if can_create_channel %}
-                        <a class="action-menu__item" href="{% url 'clubs_events:club_channel_create' club.pk %}">New channel</a>
-                    {% endif %}
-                    {% if membership and membership.status == 'active' %}
-                        <form class="club-leave-menu-item" method="post" action="{% url 'clubs_events:club_leave' club.pk %}" data-confirm="Leave {{ club.name }}?">
-                            {% csrf_token %}
-                            <button class="action-menu__item is-danger" type="submit">Leave group</button>
-                        </form>
-                    {% endif %}
-                </div>
-            </details>
-        {% endif %}
-    </div>
-</section>
-
 <div class="club-chat-layout" data-chat-workspace>
     <section
         class="surface-card club-chat-panel"
@@ -57,7 +11,7 @@
     >
         <div class="club-chat-header">
             <div>
-                <p class="eyebrow">Channel</p>
+                <p class="eyebrow">{{ club.name }}</p>
                 <h2>#{{ active_channel.name }}</h2>
                 {% if active_channel.channel_type == 'event' and active_channel.event %}
                     <p class="muted-text">Event channel - <a href="{% url 'clubs_events:event_detail' active_channel.event.pk %}">View event</a></p>
@@ -96,11 +50,7 @@
             {% endif %}
             {% if not is_member %}
                 <div class="club-chat-cta">
-                    <p class="muted-text">Join the club to send messages. You can keep reading for now.</p>
-                    <form method="post" action="{% url 'clubs_events:club_join' club.pk %}">
-                        {% csrf_token %}
-                        <button class="button is-link is-light" type="submit">Join club to discuss</button>
-                    </form>
+                    <p class="muted-text">Join the club from the sidebar to send messages. You can keep reading for now.</p>
                 </div>
             {% endif %}
         </div>
@@ -147,6 +97,55 @@
     </section>
 
     <aside class="surface-card club-channel-panel">
+        <div class="club-panel-summary">
+            <div class="club-panel-summary__header">
+                <div>
+                    <p class="eyebrow">{{ club.category }}</p>
+                    <h2 class="club-panel-summary__title">{{ club.name }}</h2>
+                </div>
+                {% if can_manage_club or can_create_event_for_club or can_create_channel or membership %}
+                    <details class="action-menu club-panel-summary__menu">
+                        <summary class="action-menu__toggle button is-dark is-outlined" aria-label="Club options">
+                            ...
+                        </summary>
+                        <div class="action-menu__panel">
+                            {% if can_manage_club %}
+                                <a class="action-menu__item" href="{% url 'clubs_events:club_edit' club.pk %}">Edit club</a>
+                            {% endif %}
+                            {% if can_create_event_for_club %}
+                                <a class="action-menu__item" href="{% url 'clubs_events:event_create' %}?club={{ club.pk }}">New event</a>
+                            {% endif %}
+                            {% if can_create_channel %}
+                                <a class="action-menu__item" href="{% url 'clubs_events:club_channel_create' club.pk %}">New channel</a>
+                            {% endif %}
+                            {% if membership and membership.status == 'active' %}
+                                <form method="post" action="{% url 'clubs_events:club_leave' club.pk %}" data-confirm="Leave {{ club.name }}?">
+                                    {% csrf_token %}
+                                    <button class="action-menu__item is-danger" type="submit">Leave group</button>
+                                </form>
+                            {% endif %}
+                        </div>
+                    </details>
+                {% endif %}
+            </div>
+            {% if club.description %}
+                <p class="club-panel-summary__copy muted-text">{{ club.description }}</p>
+            {% endif %}
+            <div class="club-panel-summary__meta">
+                {% if membership and membership.status == 'active' %}
+                    <span class="tag is-link is-light club-membership-badge">You are {{ membership.get_local_role_display }}</span>
+                    <form class="club-panel-summary__form" method="post" action="{% url 'clubs_events:club_leave' club.pk %}" data-confirm="Leave {{ club.name }}?">
+                        {% csrf_token %}
+                        <button class="button is-small club-leave-button" type="submit">Leave group</button>
+                    </form>
+                {% else %}
+                    <form class="club-panel-summary__form" method="post" action="{% url 'clubs_events:club_join' club.pk %}">
+                        {% csrf_token %}
+                        <button class="button is-link is-small" type="submit">Join club</button>
+                    </form>
+                {% endif %}
+            </div>
+        </div>
         <div class="surface-card__header">
             <h2>Channels</h2>
         </div>
