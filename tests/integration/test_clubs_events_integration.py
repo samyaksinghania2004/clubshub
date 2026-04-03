@@ -285,6 +285,8 @@ class ClubsEventsIntegrationTests(TestCase):
 
         self.client.force_login(self.coordinator)
         manager_response = self.client.get(reverse("clubs_events:club_detail", args=[self.club.pk]))
+        self.assertContains(manager_response, 'data-modal-target="removed-members-modal"')
+        self.assertContains(manager_response, 'id="removed-members-modal"')
         self.assertContains(
             manager_response,
             reverse("clubs_events:club_member_restore", args=[self.club.pk, self.member.pk]),

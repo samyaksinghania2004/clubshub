@@ -118,6 +118,11 @@
                             {% if can_create_channel %}
                                 <a class="action-menu__item" href="{% url 'clubs_events:club_channel_create' club.pk %}">New channel</a>
                             {% endif %}
+                            {% if can_manage_members and removed_members %}
+                                <button class="action-menu__item" type="button" data-modal-target="removed-members-modal">
+                                    Removed members
+                                </button>
+                            {% endif %}
                             {% if membership and membership.status == 'active' %}
                                 <form method="post" action="{% url 'clubs_events:club_leave' club.pk %}" data-confirm="Leave {{ club.name }}?">
                                     {% csrf_token %}
@@ -346,12 +351,23 @@
             </div>
         </div>
         {% endif %}
-        {% if can_manage_members and removed_members %}
-        <div class="channel-group">
-            <div class="member-group-header">
-                <p class="eyebrow">Removed</p>
-                <span class="tag is-dark is-light">{{ removed_members|length }} awaiting restore</span>
+    </aside>
+</div>
+{% if can_manage_members and removed_members %}
+<div class="modal is-hidden" id="removed-members-modal" data-modal>
+    <div class="modal__backdrop" data-modal-close></div>
+    <div class="modal__panel">
+        <div class="modal__header">
+            <div>
+                <p class="eyebrow">{{ club.name }}</p>
+                <h3>Removed members</h3>
             </div>
+            <button type="button" class="modal__close button is-dark is-outlined" data-modal-close>
+                Close
+            </button>
+        </div>
+        <div class="modal__body stack-gap">
+            <p class="muted-text">{{ removed_members|length }} awaiting restore.</p>
             <div class="member-list">
                 {% for removed in removed_members %}
                     <div class="member-restore-row">
@@ -367,9 +383,9 @@
                 {% endfor %}
             </div>
         </div>
-        {% endif %}
-    </aside>
+    </div>
 </div>
+{% endif %}
 {% if can_view_private_members %}
 <div class="modal is-hidden" id="channel-members-modal" data-modal>
     <div class="modal__backdrop" data-modal-close></div>
