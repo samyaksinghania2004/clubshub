@@ -34,17 +34,12 @@
     <section class="stack-gap">
         <article class="surface-card">
             <div class="surface-card__header">
-                <div class="tab-row">
-                    <h2>Announcements</h2>
+                <h2>Announcements</h2>
+                {% if can_post_announcement %}
                     <div class="tab-actions">
-                        {% if discuss_url %}
-                            <a class="button is-link is-light" href="{{ discuss_url }}">Discuss</a>
-                        {% endif %}
-                        {% if can_post_announcement %}
-                            <a class="button is-link is-light" href="{% url 'clubs_events:announcement_create' 'event' event.pk %}">Post announcement</a>
-                        {% endif %}
+                        <a class="button is-link is-light" href="{% url 'clubs_events:announcement_create' 'event' event.pk %}">Post announcement</a>
                     </div>
-                </div>
+                {% endif %}
             </div>
             {% for ann in announcements %}
                 <article id="announcement-{{ ann.pk }}" class="announcement-card">

@@ -190,3 +190,10 @@ class ClubsEventsIntegrationTests(TestCase):
         notification.refresh_from_db()
         self.assertTrue(notification.is_read)
 
+    def test_event_detail_shows_single_discuss_button_for_student(self):
+        self.client.force_login(self.member)
+
+        response = self.client.get(reverse("clubs_events:event_detail", args=[self.event.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, ">Discuss<", count=1, html=False)
