@@ -133,3 +133,48 @@ class AccountsFlowIntegrationTests(TestCase):
         )
         self.assertEqual(self.client.session.get("_auth_user_id"), str(user.pk))
 
+    def test_login_pages_are_not_cached_and_authenticated_login_get_redirects(self):
+        anonymous_response = self.client.get(reverse("accounts:login"))
+        self.assertEqual(anonymous_response.status_code, 200)
+        self.assertIn("no-store", anonymous_response["Cache-Control"])
+
+        user = User.objects.create_user(
+            username="cacheduser",
+            email="cacheduser@iitk.ac.in",
+            password=self.password,
+            email_verified=True,
+        )
+        self.client.force_login(user)
+
+        authenticated_response = self.client.get(reverse("accounts:login"))
+        self.assertRedirects(
+            authenticated_response,
+            reverse("clubs_events:event_feed"),
+            fetch_redirect_response=False,
+        )
+        self.assertIn("no-store", authenticated_response["Cache-Control"])
+
+    def test_logout_requires_post_and_navigation_renders_logout_form(self):
+        user = User.objects.create_user(
+            username="logoutuser",
+            email="logoutuser@iitk.ac.in",
+            password=self.password,
+            email_verified=True,
+        )
+        self.client.force_login(user)
+
+        page_response = self.client.get(reverse("clubs_events:event_feed"))
+        self.assertContains(page_response, "app-topbar-logout-form")
+        self.assertContains(page_response, f'action="{reverse("accounts:logout")}"')
+        self.assertContains(page_response, 'method="post"')
+
+        get_response = self.client.get(reverse("accounts:logout"))
+        self.assertEqual(get_response.status_code, 405)
+
+        post_response = self.client.post(reverse("accounts:logout"))
+        self.assertRedirects(
+            post_response,
+            reverse("accounts:login"),
+            fetch_redirect_response=False,
+        )
+        self.assertNotIn("_auth_user_id", self.client.session)

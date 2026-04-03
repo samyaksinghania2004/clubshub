@@ -138,6 +138,11 @@ html[data-theme="light"] .app-topbar {
   flex-wrap: wrap;
 }
 
+.app-topbar-logout-form {
+  display: inline-flex;
+  margin: 0;
+}
+
 .app-brand {
   display: inline-flex;
   align-items: center;
@@ -1412,6 +1417,14 @@ body.modal-open {
   .app-topbar-button--logout {
     min-width: 0;
     padding-inline: 0.95rem !important;
+  }
+
+  .app-topbar-logout-form {
+    width: 100%;
+  }
+
+  .app-topbar-logout-form .app-topbar-button--logout {
+    width: 100%;
   }
 
   .app-topbar-button--notifications .badge-pill {

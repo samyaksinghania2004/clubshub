@@ -12,6 +12,8 @@ from django.core.mail import send_mail
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.views.decorators.cache import never_cache
+from django.views.decorators.http import require_POST
 
 from .forms import (
     EmailOTPRequestForm,
@@ -198,6 +200,7 @@ def resend_verification_view(request):
     return render(request, "accounts/resend_verification.html", {"form": form})
 
 
+@never_cache
 def login_view(request):
     if request.user.is_authenticated:
         return redirect("clubs_events:event_feed")
@@ -229,6 +232,7 @@ def login_view(request):
     )
 
 
+@never_cache
 def request_login_otp_view(request):
     if request.user.is_authenticated:
         return redirect("clubs_events:event_feed")
@@ -312,6 +316,7 @@ def request_login_otp_view(request):
     )
 
 
+@never_cache
 def otp_verify_view(request):
     if request.user.is_authenticated:
         return redirect("clubs_events:event_feed")
@@ -390,7 +395,9 @@ def otp_verify_view(request):
     )
 
 
+@never_cache
 @login_required
+@require_POST
 def logout_view(request):
     logout(request)
     messages.info(request, "You have been logged out.")
