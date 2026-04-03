@@ -189,3 +189,39 @@ class RoomsIntegrationTests(TestCase):
             message=message,
         )
         self.assertIn(str(message.pk), notification.action_url)
+
+    def test_room_detail_uses_sidebar_member_list_layout(self):
+        room = DiscussionRoom.objects.create(
+            name="Commons",
+            description="A public topic room.",
+            room_type=DiscussionRoom.RoomType.TOPIC,
+            access_type=DiscussionRoom.AccessType.PUBLIC,
+            created_by=self.coordinator,
+        )
+        RoomHandle.objects.create(
+            room=room,
+            user=self.coordinator,
+            handle_name="LeadHandle",
+            status=RoomHandle.Status.APPROVED,
+            approved_at=timezone.now(),
+        )
+        RoomHandle.objects.create(
+            room=room,
+            user=self.student,
+            handle_name="StudentHandle",
+            status=RoomHandle.Status.APPROVED,
+            approved_at=timezone.now(),
+        )
+
+        self.client.force_login(self.student)
+        response = self.client.get(reverse("rooms:room_detail", args=[room.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "data-chat-workspace")
+        self.assertContains(response, "room-panel-summary__title")
+        self.assertContains(response, "room-member-list")
+        self.assertContains(response, "StudentHandle")
+        self.assertContains(response, "LeadHandle")
+        self.assertNotContains(response, "page-hero room-hero")
+        self.assertNotContains(response, "View members")
+        self.assertNotContains(response, 'id="room-members-modal"')

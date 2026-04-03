@@ -1,40 +1,6 @@
 {% extends 'base.html' %}
 {% block title %}{{ room.name }} - ClubsHub{% endblock %}
 {% block content %}
-<section class="page-hero room-hero">
-    <div>
-        <p class="eyebrow">{{ room.get_room_type_display }} - {{ room.get_access_type_display }}</p>
-        <h1 class="page-title">{{ room.name }}</h1>
-        {% if room.description %}<p class="page-subtitle">{{ room.description }}</p>{% endif %}
-    </div>
-    <div class="hero-actions">
-        {% if handle and handle.status == 'approved' %}
-            <span class="tag is-link is-light">Handle: {{ handle.handle_name }}</span>
-        {% elif read_only_mode %}
-            <span class="tag is-dark is-light">Moderator preview mode</span>
-        {% endif %}
-        <details class="action-menu">
-            <summary class="action-menu__toggle button is-dark is-outlined" aria-label="Room options">
-                ...
-            </summary>
-            <div class="action-menu__panel">
-                <button class="action-menu__item" type="button" data-modal-target="room-members-modal">
-                    View members
-                </button>
-                {% if handle and handle.status == 'approved' %}
-                    <form method="post" action="{% url 'rooms:leave_room' room.pk %}" data-confirm="Leave {{ room.name }}?">
-                        {% csrf_token %}
-                        <button class="action-menu__item is-danger" type="submit">Leave room</button>
-                    </form>
-                {% endif %}
-            </div>
-        </details>
-        {% if can_manage_room %}
-            <a class="button is-dark is-outlined" href="{% url 'rooms:room_edit' room.pk %}">Edit room</a>
-        {% endif %}
-    </div>
-</section>
-
 {% if review_mode %}
     <div class="review-banner">
         <strong>Review mode:</strong> you are looking at this room in the context of a reported message.
@@ -50,6 +16,18 @@
         data-chat-last="{% if last_message_at %}{{ last_message_at|date:'c' }}{% endif %}"
         data-show-identities="{% if show_real_identities %}true{% else %}false{% endif %}"
     >
+        <div class="room-chat-header">
+            <div>
+                <p class="eyebrow">{{ room.get_room_type_display }} - {{ room.get_access_type_display }}</p>
+                <h2>{{ room.name }}</h2>
+            </div>
+            {% if read_only_mode %}
+                <div class="club-chat-cta">
+                    <p class="muted-text">Moderator preview mode.</p>
+                </div>
+            {% endif %}
+        </div>
+
         <div class="message-stream">
             {% for message_obj in messages_qs %}
                 <article id="message-{{ message_obj.pk }}" data-message-id="{{ message_obj.pk }}" class="chat-message {% if focus_message_id == message_obj.pk|stringformat:'s' %}is-focused{% endif %}">
@@ -112,6 +90,64 @@
     </section>
 
     <aside class="room-sidepanel stack-gap">
+        <article class="surface-card room-panel-card">
+            <div class="room-panel-summary">
+                <div class="room-panel-summary__header">
+                    <div>
+                        <p class="eyebrow">{{ room.get_room_type_display }}</p>
+                        <h2 class="room-panel-summary__title">{{ room.name }}</h2>
+                    </div>
+                    {% if can_manage_room or handle and handle.status == 'approved' %}
+                        <details class="action-menu room-panel-summary__menu">
+                            <summary class="action-menu__toggle button is-dark is-outlined" aria-label="Room options">
+                                ...
+                            </summary>
+                            <div class="action-menu__panel">
+                                {% if can_manage_room %}
+                                    <a class="action-menu__item" href="{% url 'rooms:room_edit' room.pk %}">Edit room</a>
+                                {% endif %}
+                                {% if handle and handle.status == 'approved' %}
+                                    <form method="post" action="{% url 'rooms:leave_room' room.pk %}" data-confirm="Leave {{ room.name }}?">
+                                        {% csrf_token %}
+                                        <button class="action-menu__item is-danger" type="submit">Leave room</button>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        </details>
+                    {% endif %}
+                </div>
+                {% if room.description %}
+                    <p class="room-panel-summary__copy muted-text">{{ room.description }}</p>
+                {% endif %}
+                <div class="room-panel-summary__meta">
+                    <span class="tag is-dark is-light">{{ room.get_access_type_display }}</span>
+                    {% if handle and handle.status == 'approved' %}
+                        <span class="tag is-link is-light">Handle: {{ handle.handle_name }}</span>
+                    {% elif read_only_mode %}
+                        <span class="tag is-dark is-light">Moderator preview mode</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="channel-group">
+                <div class="member-group-header">
+                    <p class="eyebrow">Members</p>
+                    <span class="tag is-link is-light">{{ participants|length }} in room</span>
+                </div>
+                <div class="room-member-list">
+                    {% for participant in participants %}
+                        <div class="room-member-row">
+                            <strong>{{ participant.handle_name }}</strong>
+                            {% if show_real_identities %}
+                                <p class="muted-text">{{ participant.user.display_name }}</p>
+                            {% endif %}
+                        </div>
+                    {% empty %}
+                        <p class="muted-text">No participants yet.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </article>
+
         {% if can_manage_room and room.access_type == 'private_invite_only' %}
             <article class="surface-card compact-card">
                 <div class="surface-card__header"><h2>Invite someone</h2></div>
@@ -152,31 +188,5 @@
             </article>
         {% endif %}
     </aside>
-</div>
-<div class="modal is-hidden" id="room-members-modal" data-modal>
-    <div class="modal__backdrop" data-modal-close></div>
-    <div class="modal__panel">
-        <div class="modal__header">
-            <div>
-                <p class="eyebrow">{{ room.get_room_type_display }}</p>
-                <h3>Room members</h3>
-            </div>
-            <button type="button" class="modal__close button is-dark is-outlined" data-modal-close>
-                Close
-            </button>
-        </div>
-        <div class="modal__body">
-            <ul class="simple-list">
-                {% for participant in participants %}
-                    <li>
-                        <span>{{ participant.handle_name }}</span>
-                        {% if show_real_identities %}<span class="muted-text">- {{ participant.user.display_name }}</span>{% endif %}
-                    </li>
-                {% empty %}
-                    <li class="muted-text">No participants yet.</li>
-                {% endfor %}
-            </ul>
-        </div>
-    </div>
 </div>
 {% endblock %}

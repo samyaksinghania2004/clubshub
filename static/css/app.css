@@ -999,7 +999,7 @@ body.modal-open {
 
 .room-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-columns: minmax(0, 1fr) 280px;
   gap: 1rem;
   align-items: start;
 }
@@ -1195,7 +1195,8 @@ body.modal-open {
   min-height: 0;
 }
 
-.club-chat-header {
+.club-chat-header,
+.room-chat-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -1204,7 +1205,12 @@ body.modal-open {
   flex-wrap: wrap;
 }
 
-.club-chat-header h2 {
+.room-chat-header {
+  padding: 1rem 1rem 0.25rem;
+}
+
+.club-chat-header h2,
+.room-chat-header h2 {
   margin: 0;
   color: var(--text);
   font-size: 1.45rem;
@@ -1216,7 +1222,8 @@ body.modal-open {
   max-width: 260px;
 }
 
-.club-panel-summary {
+.club-panel-summary,
+.room-panel-summary {
   display: grid;
   gap: 0.75rem;
   padding-bottom: 0.95rem;
@@ -1224,38 +1231,68 @@ body.modal-open {
   border-bottom: 1px solid var(--border);
 }
 
-.club-panel-summary__header {
+.club-panel-summary__header,
+.room-panel-summary__header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 0.75rem;
 }
 
-.club-panel-summary__title {
+.club-panel-summary__title,
+.room-panel-summary__title {
   margin: 0;
   color: var(--text);
   font-size: 1.35rem;
   line-height: 1.08;
 }
 
-.club-panel-summary__copy {
+.club-panel-summary__copy,
+.room-panel-summary__copy {
   margin: 0;
   line-height: 1.55;
 }
 
-.club-panel-summary__meta {
+.club-panel-summary__meta,
+.room-panel-summary__meta {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
   align-items: center;
 }
 
-.club-panel-summary__form {
+.club-panel-summary__form,
+.room-panel-summary__form {
   margin: 0;
 }
 
-.club-panel-summary__menu .action-menu__toggle {
+.club-panel-summary__menu .action-menu__toggle,
+.room-panel-summary__menu .action-menu__toggle {
   min-width: 2.8rem;
+}
+
+.room-panel-card {
+  padding: 1rem;
+}
+
+.room-member-list {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.room-member-row {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--bg-muted);
+}
+
+.room-member-row strong,
+.room-member-row p {
+  margin: 0;
+  overflow-wrap: anywhere;
 }
 
 .club-leave-button {
