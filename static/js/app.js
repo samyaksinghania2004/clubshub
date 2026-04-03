@@ -23,6 +23,7 @@
   const liveMessagePollIntervalMs = 4000;
   const chatWorkspaceLayouts = Array.from(document.querySelectorAll('[data-chat-workspace]'));
   const latestMessageStreams = new Set();
+  const keyboardOpenThresholdPx = 140;
   let deferredInstallPrompt = null;
 
   const showToast = (title, body) => {
@@ -82,9 +83,18 @@
     return navigationEntry?.type === 'back_forward';
   };
 
+  const isMobileKeyboardOpen = () => {
+    if (desktopChatWorkspaceQuery.matches || !window.visualViewport) return false;
+    return window.innerHeight - window.visualViewport.height > keyboardOpenThresholdPx;
+  };
+
   const syncChatWorkspaceHeights = () => {
     if (!chatWorkspaceLayouts.length) return;
-    const viewportHeight = window.visualViewport?.height || window.innerHeight;
+    const visualViewport = window.visualViewport;
+    const viewportHeight = visualViewport?.height || window.innerHeight;
+    const viewportBottom = (visualViewport?.offsetTop || 0) + viewportHeight;
+    const keyboardOpen = isMobileKeyboardOpen();
+    document.body.classList.toggle('is-mobile-keyboard-open', keyboardOpen);
     chatWorkspaceLayouts.forEach((layout) => {
       const useContainedHeight =
         desktopChatWorkspaceQuery.matches ||
@@ -96,8 +106,9 @@
         return;
       }
       const rect = layout.getBoundingClientRect();
-      const minHeight = layout.classList.contains('dm-layout--threaded') ? 320 : 420;
-      const availableHeight = Math.max(Math.floor(viewportHeight - rect.top - 8), minHeight);
+      const minHeight = keyboardOpen ? 0 : layout.classList.contains('dm-layout--threaded') ? 320 : 420;
+      const bottomInset = keyboardOpen ? 2 : 8;
+      const availableHeight = Math.max(Math.floor(viewportBottom - rect.top - bottomInset), minHeight);
       layout.style.setProperty('--chat-workspace-height', `${availableHeight}px`);
     });
   };
@@ -133,6 +144,7 @@
   window.addEventListener('resize', syncChatWorkspaceHeights);
   if (window.visualViewport?.addEventListener) {
     window.visualViewport.addEventListener('resize', syncChatWorkspaceHeights);
+    window.visualViewport.addEventListener('scroll', syncChatWorkspaceHeights);
   }
   if (desktopChatWorkspaceQuery.addEventListener) {
     desktopChatWorkspaceQuery.addEventListener('change', () => {
@@ -140,6 +152,12 @@
       syncLatestMessageStreams();
     });
   }
+  window.addEventListener('focusin', () => {
+    window.setTimeout(syncChatWorkspaceHeights, 60);
+  });
+  window.addEventListener('focusout', () => {
+    window.setTimeout(syncChatWorkspaceHeights, 120);
+  });
 
   const loadTheme = () => {
     const saved = localStorage.getItem(themeKey);

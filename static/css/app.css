@@ -2018,6 +2018,13 @@ html[data-theme="light"] .auth-feature-list li {
     padding: 0.45rem 0.45rem calc(0.45rem + env(safe-area-inset-bottom, 0px));
   }
 
+  body.is-mobile-keyboard-open[data-route-name="inbox_thread"] .app-main,
+  body.is-mobile-keyboard-open[data-route-name="club_detail"] .app-main,
+  body.is-mobile-keyboard-open[data-route-name="club_channel"] .app-main,
+  body.is-mobile-keyboard-open[data-route-name="room_detail"] .app-main {
+    padding-bottom: 0.12rem;
+  }
+
   body[data-route-name="inbox_thread"] .app-search,
   body[data-route-name="club_detail"] .app-search,
   body[data-route-name="club_channel"] .app-search,
@@ -2037,6 +2044,10 @@ html[data-theme="light"] .auth-feature-list li {
     height: var(--chat-workspace-height, auto);
     min-height: min(560px, calc(100dvh - 210px));
     align-items: stretch;
+  }
+
+  body.is-mobile-keyboard-open .dm-layout--threaded {
+    min-height: 0;
   }
 
   .dm-layout--threaded > * {
@@ -2148,6 +2159,12 @@ html[data-theme="light"] .auth-feature-list li {
     overflow: hidden;
   }
 
+  body.is-mobile-keyboard-open .club-chat-layout--threaded .club-chat-panel,
+  body.is-mobile-keyboard-open .room-layout--threaded .room-stream-card,
+  body.is-mobile-keyboard-open .dm-layout--threaded .dm-chat-panel {
+    min-height: 0;
+  }
+
   .club-chat-layout--threaded .club-chat-panel {
     padding: 0;
   }
@@ -2201,6 +2218,12 @@ html[data-theme="light"] .auth-feature-list li {
     border-radius: 0;
     background: linear-gradient(180deg, rgba(243, 246, 251, 0.76), rgba(243, 246, 251, 0.98) 32%);
     box-shadow: none;
+  }
+
+  body.is-mobile-keyboard-open .dm-layout--threaded .dm-composer,
+  body.is-mobile-keyboard-open .club-chat-layout--threaded .composer-card,
+  body.is-mobile-keyboard-open .room-layout--threaded .composer-card {
+    padding-bottom: 0.45rem;
   }
 
   html[data-theme="dark"] .club-chat-layout--threaded .composer-card,
