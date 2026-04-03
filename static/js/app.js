@@ -11,6 +11,9 @@
   const installButton = document.querySelector('[data-install-app]');
   const enableAlertsButton = document.querySelector('[data-enable-browser-notifications]');
   const toastRoot = document.getElementById('toast-root');
+  const isAuthSensitivePage =
+    document.body?.dataset.authenticated === 'true' ||
+    document.body?.dataset.routeNamespace === 'accounts';
   const themeKey = 'clubshub-theme';
   const sidebarStateKey = 'clubshub-sidebar-collapsed';
   const seenNotificationsKey = 'clubshub-seen-notification-ids';
@@ -66,6 +69,18 @@
     if (response) return `Server error (${response.status})`;
     return 'Please try again.';
   };
+
+  const wasRestoredFromHistory = (event) => {
+    if (event?.persisted) return true;
+    if (!window.performance?.getEntriesByType) return false;
+    const navigationEntry = window.performance.getEntriesByType('navigation')[0];
+    return navigationEntry?.type === 'back_forward';
+  };
+
+  window.addEventListener('pageshow', (event) => {
+    if (!isAuthSensitivePage || !wasRestoredFromHistory(event)) return;
+    window.location.reload();
+  });
 
   const loadTheme = () => {
     const saved = localStorage.getItem(themeKey);

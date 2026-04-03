@@ -154,6 +154,11 @@ class AccountsFlowIntegrationTests(TestCase):
         )
         self.assertIn("no-store", authenticated_response["Cache-Control"])
 
+        feed_response = self.client.get(reverse("clubs_events:event_feed"))
+        self.assertEqual(feed_response.status_code, 200)
+        self.assertIn("no-store", feed_response["Cache-Control"])
+        self.assertEqual(feed_response["Pragma"], "no-cache")
+
     def test_logout_requires_post_and_navigation_renders_logout_form(self):
         user = User.objects.create_user(
             username="logoutuser",

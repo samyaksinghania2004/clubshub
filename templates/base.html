@@ -21,7 +21,10 @@
     </script>
     <script src="{% static 'js/app.js' %}" defer></script>
 </head>
-<body>
+<body
+    data-authenticated="{% if request.user.is_authenticated %}true{% else %}false{% endif %}"
+    data-route-namespace="{{ request.resolver_match.namespace|default:'' }}"
+>
 <div class="app-shell">
     <header class="app-topbar">
         <div class="app-brand-row">
