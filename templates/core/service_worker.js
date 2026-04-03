@@ -1,5 +1,5 @@
 {% load static %}
-const CACHE_NAME = "clubshub-pwa-v2";
+const CACHE_NAME = "clubshub-pwa-v4";
 const OFFLINE_URL = "{% url 'core:offline' %}";
 const STATIC_ASSETS = [
   OFFLINE_URL,

@@ -86,7 +86,9 @@
     chatWorkspaceLayouts.forEach((layout) => {
       const useContainedHeight =
         desktopChatWorkspaceQuery.matches ||
-        layout.classList.contains('dm-layout--threaded');
+        layout.classList.contains('dm-layout--threaded') ||
+        layout.classList.contains('club-chat-layout--threaded') ||
+        layout.classList.contains('room-layout--threaded');
       if (!useContainedHeight) {
         layout.style.removeProperty('--chat-workspace-height');
         return;
