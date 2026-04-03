@@ -31,6 +31,8 @@ from .models import (
     Notification,
 )
 
+PWA_ASSET_VERSION = "20260403-logo1-branding"
+
 
 def root_redirect(request):
     if request.user.is_authenticated:
@@ -53,19 +55,19 @@ def web_manifest_view(request):
             "orientation": "portrait",
             "icons": [
                 {
-                    "src": static("icons/icon-192.png"),
+                    "src": f"{static('icons/icon-192.png')}?v={PWA_ASSET_VERSION}",
                     "sizes": "192x192",
                     "type": "image/png",
                     "purpose": "any",
                 },
                 {
-                    "src": static("icons/icon-512.png"),
+                    "src": f"{static('icons/icon-512.png')}?v={PWA_ASSET_VERSION}",
                     "sizes": "512x512",
                     "type": "image/png",
                     "purpose": "any",
                 },
                 {
-                    "src": static("icons/icon-maskable-512.png"),
+                    "src": f"{static('icons/icon-maskable-512.png')}?v={PWA_ASSET_VERSION}",
                     "sizes": "512x512",
                     "type": "image/png",
                     "purpose": "maskable",

@@ -1,16 +1,16 @@
 {% load static %}
-const CACHE_NAME = "clubshub-pwa-v11";
+const CACHE_NAME = "clubshub-pwa-v12";
 const OFFLINE_URL = "{% url 'core:offline' %}";
 const STATIC_ASSETS = [
   OFFLINE_URL,
   "{% static 'css/app.css' %}?v=20260403-mobile-keyboard-gap-fix",
   "{% static 'js/app.js' %}?v=20260403-mobile-keyboard-gap-fix",
   "{% static 'logo/logo1.png' %}",
-  "{% static 'icons/favicon-64.png' %}",
-  "{% static 'icons/apple-touch-icon.png' %}",
-  "{% static 'icons/icon-192.png' %}",
-  "{% static 'icons/icon-512.png' %}",
-  "{% static 'icons/icon-maskable-512.png' %}",
+  "{% static 'icons/favicon-64.png' %}?v=20260403-logo1-branding",
+  "{% static 'icons/apple-touch-icon.png' %}?v=20260403-logo1-branding",
+  "{% static 'icons/icon-192.png' %}?v=20260403-logo1-branding",
+  "{% static 'icons/icon-512.png' %}?v=20260403-logo1-branding",
+  "{% static 'icons/icon-maskable-512.png' %}?v=20260403-logo1-branding",
 ];
 
 self.addEventListener("install", (event) => {

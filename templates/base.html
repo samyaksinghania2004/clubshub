@@ -9,15 +9,15 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="ClubsHub">
-    <link rel="manifest" href="{% url 'web_manifest' %}">
-    <link rel="icon" type="image/png" href="{% static 'logo/logo1.png' %}">
-    <link rel="apple-touch-icon" href="{% static 'logo/logo1.png' %}">
+    <link rel="manifest" href="{% url 'web_manifest' %}?v=20260403-logo1-branding">
+    <link rel="icon" type="image/png" href="{% static 'icons/favicon-64.png' %}?v=20260403-logo1-branding">
+    <link rel="apple-touch-icon" href="{% static 'icons/apple-touch-icon.png' %}?v=20260403-logo1-branding">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
     <link rel="stylesheet" href="{% static 'css/app.css' %}?v=20260403-mobile-keyboard-gap-fix">
     <script>
         window.clubshubNotificationFeedUrl = "{% url 'core:notifications_feed' %}";
         window.clubshubUserSearchUrl = "{% url 'core:user_search' %}";
-        window.clubshubServiceWorkerUrl = "{% url 'service_worker' %}";
+        window.clubshubServiceWorkerUrl = "{% url 'service_worker' %}?v=20260403-logo1-branding";
     </script>
     <script src="{% static 'js/app.js' %}?v=20260403-mobile-keyboard-gap-fix" defer></script>
 </head>
