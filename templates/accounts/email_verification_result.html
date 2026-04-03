@@ -15,6 +15,12 @@
         <div class="notification is-danger is-light">
           {{ message }}
         </div>
+
+        <p class="mt-4">
+          <a href="{% url 'accounts:resend_verification' %}">
+            Need another verification email?
+          </a>
+        </p>
       {% endif %}
 
       <p class="mt-4">

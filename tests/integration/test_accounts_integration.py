@@ -49,6 +49,11 @@ class AccountsFlowIntegrationTests(TestCase):
         self.assertFalse(user.email_verified)
         self.assertEqual(len(mail.outbox), 1)
 
+        pending_response = self.client.get(
+            reverse("accounts:signup_pending") + "?email=newuser%40iitk.ac.in"
+        )
+        self.assertContains(pending_response, reverse("accounts:resend_verification"))
+
         verify_response = self.client.get(self._extract_verify_path(mail.outbox[0].body))
         self.assertContains(
             verify_response,
@@ -140,6 +145,7 @@ class AccountsFlowIntegrationTests(TestCase):
         self.assertContains(anonymous_response, 'data-theme-toggle')
         self.assertContains(anonymous_response, reverse("accounts:otp_verify"))
         self.assertNotContains(anonymous_response, f'action="{reverse("accounts:request_login_otp")}"')
+        self.assertNotContains(anonymous_response, reverse("accounts:resend_verification"))
 
         user = User.objects.create_user(
             username="cacheduser",
@@ -173,6 +179,13 @@ class AccountsFlowIntegrationTests(TestCase):
         self.assertContains(response, "OTP login")
         self.assertContains(response, f'action="{reverse("accounts:request_login_otp")}"')
         self.assertContains(response, reverse("accounts:login"))
+
+    def test_failed_verification_page_offers_resend_link(self):
+        response = self.client.get(reverse("accounts:verify_email", args=["invalid-token"]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "This verification link is invalid or has expired.")
+        self.assertContains(response, reverse("accounts:resend_verification"))
 
     def test_logout_requires_post_and_navigation_renders_logout_form(self):
         user = User.objects.create_user(
