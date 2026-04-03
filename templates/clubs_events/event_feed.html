@@ -104,18 +104,6 @@
                 <p class="muted-text">You are not registered or waitlisted for any upcoming events.</p>
             {% endif %}
         </div>
-        <div class="surface-card compact-card">
-            <div class="surface-card__header"><h2>From your clubs</h2></div>
-            {% if followed_events %}
-                <ul class="simple-list">
-                    {% for event in followed_events %}
-                        <li><a href="{% url 'clubs_events:event_detail' event.pk %}">{{ event.title }}</a></li>
-                    {% endfor %}
-                </ul>
-            {% else %}
-                <p class="muted-text">Join clubs to personalise this panel.</p>
-            {% endif %}
-        </div>
     </aside>
 </div>
 {% endblock %}

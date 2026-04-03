@@ -102,19 +102,6 @@ def event_feed_view(request):
     if date_to:
         events = events.filter(start_time__date__lte=date_to)
 
-    member_club_ids = request.user.club_memberships.filter(
-        status=ClubMembership.Status.ACTIVE
-    ).values_list("club_id", flat=True)
-    followed_events = (
-        Event.objects.select_related("club")
-        .filter(
-            club_id__in=member_club_ids,
-            status=Event.Status.PUBLISHED,
-            end_time__gte=timezone.now(),
-            is_archived=False,
-        )
-        .exclude(pk__in=events.values_list("pk", flat=True))[:5]
-    )
     my_registrations = (
         request.user.registrations.select_related("event", "event__club")
         .filter(
@@ -146,7 +133,6 @@ def event_feed_view(request):
             "date_to": date_to,
             "q": q,
             "my_registrations": my_registrations,
-            "followed_events": followed_events,
             "can_create_event_any": _clubs_user_can_create_for(request.user).exists(),
         },
     )
