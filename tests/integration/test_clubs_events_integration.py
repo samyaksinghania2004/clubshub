@@ -226,6 +226,9 @@ class ClubsEventsIntegrationTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "data-chat-workspace")
         self.assertContains(response, 'data-live-chat="club"')
+        self.assertContains(response, 'data-chat-sidepanel-toggle="club-chat-sidepanel"')
+        self.assertContains(response, 'id="club-chat-sidepanel"')
+        self.assertContains(response, "data-chat-sidepanel-drawer")
         self.assertContains(response, "club-panel-summary__title")
         self.assertNotContains(response, "page-hero page-hero--club")
 

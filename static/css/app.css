@@ -1233,6 +1233,23 @@ body.modal-open {
   font-size: 1.45rem;
 }
 
+.club-chat-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.club-chat-info-toggle,
+.club-channel-panel__drawer-header,
+.club-channel-drawer__backdrop {
+  display: none;
+}
+
+.club-channel-drawer {
+  min-height: 0;
+}
+
 .club-chat-cta {
   display: grid;
   gap: 0.5rem;
@@ -1960,6 +1977,10 @@ html[data-theme="light"] .auth-feature-list li {
     right: var(--app-main-padding-mobile);
   }
 
+  body.chat-sidepanel-open {
+    overflow: hidden;
+  }
+
   .page-hero,
   .member-row,
   .surface-card__header,
@@ -2149,6 +2170,12 @@ html[data-theme="light"] .auth-feature-list li {
       var(--bg);
     border-radius: 0;
     -webkit-overflow-scrolling: touch;
+  }
+
+  .club-chat-layout--threaded .message-stream .chat-message,
+  .room-layout--threaded .message-stream .chat-message {
+    width: min(100%, 88%);
+    justify-self: start;
   }
 
   .club-chat-layout--threaded .composer-card,
@@ -2492,6 +2519,79 @@ html[data-theme="light"] .auth-feature-list li {
 
   .club-chat-header {
     gap: 0.8rem;
+  }
+
+  .club-chat-info-toggle {
+    display: inline-flex;
+    min-height: 2.7rem;
+    padding-inline: 0.9rem !important;
+    border-radius: 999px !important;
+  }
+
+  .club-channel-drawer {
+    position: fixed;
+    inset: 0;
+    z-index: 46;
+    pointer-events: none;
+  }
+
+  .club-channel-drawer.is-open {
+    pointer-events: auto;
+  }
+
+  .club-channel-drawer__backdrop {
+    display: block;
+    position: absolute;
+    inset: 0;
+    border: 0;
+    padding: 0;
+    background: rgba(8, 17, 31, 0.5);
+    opacity: 0;
+    transition: opacity 0.22s ease;
+  }
+
+  .club-channel-drawer.is-open .club-channel-drawer__backdrop {
+    opacity: 1;
+  }
+
+  .club-chat-layout--threaded .club-channel-panel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: min(88vw, 360px);
+    height: 100dvh;
+    height: 100svh;
+    max-height: 100dvh;
+    max-height: 100svh;
+    padding: max(0.85rem, env(safe-area-inset-top, 0px)) 0.95rem calc(1rem + env(safe-area-inset-bottom, 0px));
+    border-radius: 26px 0 0 26px;
+    border-right: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+    box-shadow: 0 26px 48px rgba(2, 6, 23, 0.28);
+    transform: translateX(105%);
+    transition: transform 0.22s ease;
+  }
+
+  .club-channel-drawer.is-open .club-channel-panel {
+    transform: translateX(0);
+  }
+
+  .club-channel-panel__drawer-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding-bottom: 0.9rem;
+    margin-bottom: 0.9rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .club-channel-panel__drawer-header h3 {
+    margin: 0;
+    color: var(--text);
+    font-size: 1.12rem;
+    line-height: 1.08;
   }
 
   .club-panel-summary__header,

@@ -20,34 +20,45 @@
                     <p class="muted-text">Private channel for club members.</p>
                 {% endif %}
             </div>
-            {% if show_channel_menu %}
-                <details class="action-menu">
-                    <summary class="action-menu__toggle button is-dark is-outlined" aria-label="Channel options">
-                        ...
-                    </summary>
-                    <div class="action-menu__panel">
-                        {% if can_view_private_members %}
-                            <button class="action-menu__item" type="button" data-modal-target="channel-members-modal">
-                                View channel members
-                            </button>
-                        {% endif %}
-                        {% if can_add_private_members %}
-                            <button
-                                class="action-menu__item"
-                                type="button"
-                                data-modal-target="channel-members-modal"
-                                data-modal-focus="id_identifier"
-                            >
-                                Add members
-                            </button>
-                        {% endif %}
-                        <form method="post" action="{% url 'clubs_events:club_channel_delete' club.pk active_channel.slug %}" data-confirm="Delete #{{ active_channel.name }}?">
-                            {% csrf_token %}
-                            <button class="action-menu__item is-danger" type="submit">Delete channel</button>
-                        </form>
-                    </div>
-                </details>
-            {% endif %}
+            <div class="club-chat-header__actions">
+                <button
+                    type="button"
+                    class="button is-dark is-outlined club-chat-info-toggle"
+                    data-chat-sidepanel-toggle="club-chat-sidepanel"
+                    aria-controls="club-chat-sidepanel"
+                    aria-expanded="false"
+                >
+                    Info
+                </button>
+                {% if show_channel_menu %}
+                    <details class="action-menu">
+                        <summary class="action-menu__toggle button is-dark is-outlined" aria-label="Channel options">
+                            ...
+                        </summary>
+                        <div class="action-menu__panel">
+                            {% if can_view_private_members %}
+                                <button class="action-menu__item" type="button" data-modal-target="channel-members-modal">
+                                    View channel members
+                                </button>
+                            {% endif %}
+                            {% if can_add_private_members %}
+                                <button
+                                    class="action-menu__item"
+                                    type="button"
+                                    data-modal-target="channel-members-modal"
+                                    data-modal-focus="id_identifier"
+                                >
+                                    Add members
+                                </button>
+                            {% endif %}
+                            <form method="post" action="{% url 'clubs_events:club_channel_delete' club.pk active_channel.slug %}" data-confirm="Delete #{{ active_channel.name }}?">
+                                {% csrf_token %}
+                                <button class="action-menu__item is-danger" type="submit">Delete channel</button>
+                            </form>
+                        </div>
+                    </details>
+                {% endif %}
+            </div>
             {% if not is_member %}
                 <div class="club-chat-cta">
                     <p class="muted-text">Join the club from the sidebar to send messages. You can keep reading for now.</p>
@@ -96,7 +107,32 @@
         {% endif %}
     </section>
 
-    <aside class="surface-card club-channel-panel">
+    <div
+        class="club-channel-drawer"
+        id="club-chat-sidepanel"
+        data-chat-sidepanel-drawer
+        aria-hidden="true"
+    >
+        <button
+            type="button"
+            class="club-channel-drawer__backdrop"
+            data-chat-sidepanel-close="club-chat-sidepanel"
+            aria-label="Close club info panel"
+        ></button>
+        <aside class="surface-card club-channel-panel" aria-label="Club channels and members">
+            <div class="club-channel-panel__drawer-header">
+                <div>
+                    <p class="eyebrow">Club info</p>
+                    <h3>Channels and members</h3>
+                </div>
+                <button
+                    type="button"
+                    class="button is-dark is-outlined"
+                    data-chat-sidepanel-close="club-chat-sidepanel"
+                >
+                    Close
+                </button>
+            </div>
         <div class="club-panel-summary">
             <div class="club-panel-summary__header">
                 <div>
@@ -351,7 +387,8 @@
             </div>
         </div>
         {% endif %}
-    </aside>
+        </aside>
+    </div>
 </div>
 {% if can_manage_members and removed_members %}
 <div class="modal is-hidden" id="removed-members-modal" data-modal>

@@ -3,9 +3,11 @@
   const sidebar = document.querySelector('[data-app-sidebar]');
   const sidebarToggle = document.querySelector('[data-sidebar-toggle]');
   const sidebarBackdrop = document.querySelector('[data-sidebar-backdrop]');
+  const chatSidepanelDrawers = Array.from(document.querySelectorAll('[data-chat-sidepanel-drawer]'));
   const appShell = document.querySelector('.app-shell');
   const desktopSidebarQuery = window.matchMedia('(min-width: 1025px)');
   const desktopChatWorkspaceQuery = window.matchMedia('(min-width: 1025px)');
+  const mobileChatSidepanelQuery = window.matchMedia('(max-width: 1024px)');
   const themeToggle = document.querySelector('[data-theme-toggle]');
   const themeIcon = document.querySelector('[data-theme-icon]');
   const notificationsButton = document.querySelector('[data-notifications-button]');
@@ -186,6 +188,22 @@
     setMobileSidebarState(false);
   };
 
+  const syncChatSidepanelBodyState = () => {
+    const anyOpen = chatSidepanelDrawers.some((drawer) => drawer.classList.contains('is-open'));
+    document.body.classList.toggle('chat-sidepanel-open', anyOpen);
+  };
+
+  const setChatSidepanelState = (drawer, open) => {
+    if (!drawer) return;
+    const nextOpen = mobileChatSidepanelQuery.matches ? open : false;
+    drawer.classList.toggle('is-open', nextOpen);
+    drawer.setAttribute('aria-hidden', String(mobileChatSidepanelQuery.matches ? !nextOpen : false));
+    document
+      .querySelectorAll(`[data-chat-sidepanel-toggle="${drawer.id}"]`)
+      .forEach((toggle) => toggle.setAttribute('aria-expanded', String(nextOpen)));
+    syncChatSidepanelBodyState();
+  };
+
   applySidebarState();
   if (sidebar) {
     if (desktopSidebarQuery.matches) {
@@ -201,6 +219,38 @@
       if (desktopSidebarQuery.matches && sidebar) {
         sidebar.setAttribute('aria-hidden', 'false');
       }
+    });
+  }
+
+  chatSidepanelDrawers.forEach((drawer) => {
+    setChatSidepanelState(drawer, false);
+    drawer
+      .querySelectorAll('[data-chat-sidepanel-close]')
+      .forEach((closer) =>
+        closer.addEventListener('click', () => {
+          setChatSidepanelState(drawer, false);
+          closeActionMenus();
+        }),
+      );
+  });
+
+  document.querySelectorAll('[data-chat-sidepanel-toggle]').forEach((toggle) => {
+    toggle.addEventListener('click', () => {
+      const target = toggle.getAttribute('data-chat-sidepanel-toggle');
+      if (!target) return;
+      const drawer = document.getElementById(target);
+      if (!drawer || !mobileChatSidepanelQuery.matches) return;
+      closeActionMenus();
+      closeMobileSidebar(true);
+      setChatSidepanelState(drawer, !drawer.classList.contains('is-open'));
+    });
+  });
+
+  if (mobileChatSidepanelQuery.addEventListener) {
+    mobileChatSidepanelQuery.addEventListener('change', () => {
+      chatSidepanelDrawers.forEach((drawer) => {
+        setChatSidepanelState(drawer, false);
+      });
     });
   }
 
@@ -565,6 +615,11 @@
     const openModalEl = document.querySelector('.modal:not(.is-hidden)');
     if (openModalEl) {
       closeModal(openModalEl);
+      return;
+    }
+    const openChatSidepanel = chatSidepanelDrawers.find((drawer) => drawer.classList.contains('is-open'));
+    if (openChatSidepanel) {
+      setChatSidepanelState(openChatSidepanel, false);
       return;
     }
     closeActionMenus();
