@@ -163,7 +163,11 @@ def _room_access_state(room, user):
 def _serialize_room_message(message, viewer, show_real_identities, manager_access):
     created_at = timezone.localtime(message.created_at)
     identity = ""
-    if show_real_identities and message.handle and message.handle.user:
+    if (
+        message.handle
+        and message.handle.user
+        and (show_real_identities or message.handle.revealed_at)
+    ):
         identity = f"{message.handle.user.display_name} ({message.handle.user.email})"
     body_html = (
         "This message was deleted by the author or a moderator."
@@ -174,6 +178,7 @@ def _serialize_room_message(message, viewer, show_real_identities, manager_acces
         "id": str(message.id),
         "handle_name": message.handle.handle_name if message.handle else "Unknown",
         "identity": identity,
+        "is_revealed": bool(message.handle and message.handle.revealed_at),
         "created_at": message.created_at.isoformat(),
         "created_at_display": date_format(created_at, "DATETIME_FORMAT"),
         "is_edited": message.is_edited,
@@ -186,6 +191,22 @@ def _serialize_room_message(message, viewer, show_real_identities, manager_acces
         "delete_url": reverse("rooms:message_delete", args=[message.room_id, message.id]),
         "report_url": reverse("rooms:report_message", args=[message.room_id, message.id]),
     }
+
+
+def _can_creator_reveal_and_expel(user, room, viewer_handle=None):
+    if not user or not user.is_authenticated:
+        return False
+    if room.room_type != DiscussionRoom.RoomType.TOPIC or room.is_archived:
+        return False
+    if room.created_by_id != user.id:
+        return False
+    if viewer_handle is None:
+        viewer_handle = RoomHandle.objects.filter(
+            room=room,
+            user=user,
+            status=RoomHandle.Status.APPROVED,
+        ).first()
+    return bool(viewer_handle and viewer_handle.status == RoomHandle.Status.APPROVED)
 
 
 @login_required
@@ -314,6 +335,7 @@ def room_detail_view(request, pk):
     participants = room.room_handles.filter(
         status=RoomHandle.Status.APPROVED
     ).select_related("user").order_by("handle_name")
+    can_reveal_and_expel_members = _can_creator_reveal_and_expel(request.user, room, handle)
     editable_message_ids = []
     deletable_message_ids = []
     for message_obj in messages_qs:
@@ -340,6 +362,7 @@ def room_detail_view(request, pk):
             "review_mode": request.GET.get("review") == "1",
             "show_real_identities": can_review_reports,
             "participants": participants,
+            "can_reveal_and_expel_members": can_reveal_and_expel_members,
             "editable_message_ids": editable_message_ids,
             "deletable_message_ids": deletable_message_ids,
             "last_message_at": last_message_at,
@@ -481,6 +504,64 @@ def reject_handle_view(request, room_pk, handle_pk):
     handle = get_object_or_404(RoomHandle, pk=handle_pk, room=room)
     handle.delete()
     messages.info(request, "Join request rejected.")
+    return redirect("rooms:room_detail", pk=room.pk)
+
+
+@login_required
+def reveal_and_expel_room_member_view(request, room_pk, handle_pk):
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+    room = get_object_or_404(DiscussionRoom, pk=room_pk)
+    viewer_handle = RoomHandle.objects.filter(
+        room=room,
+        user=request.user,
+        status=RoomHandle.Status.APPROVED,
+    ).first()
+    if not _can_creator_reveal_and_expel(request.user, room, viewer_handle):
+        raise Http404
+
+    target_handle = get_object_or_404(
+        RoomHandle.objects.select_related("user"),
+        pk=handle_pk,
+        room=room,
+        status=RoomHandle.Status.APPROVED,
+    )
+    if target_handle.user_id == request.user.id:
+        messages.error(request, "You cannot reveal and expel your own handle.")
+        return redirect("rooms:room_detail", pk=room.pk)
+
+    now = timezone.now()
+    target_handle.revealed_at = now
+    target_handle.status = RoomHandle.Status.EXPELLED
+    target_handle.expelled_at = now
+    target_handle.save(update_fields=["revealed_at", "status", "expelled_at"])
+    create_notification(
+        user=target_handle.user,
+        text=f"You were revealed and removed from {room.name}",
+        body="The room creator revealed your identity and expelled your handle from this open room.",
+        room=room,
+        action_url=reverse("rooms:room_list"),
+    )
+    log_audit(
+        action_type=AuditLogEntry.ActionType.HANDLE_REVEALED,
+        acting_user=request.user,
+        target_user=target_handle.user,
+        target_handle_name=target_handle.handle_name,
+        room=room,
+        reason="Revealed by the room creator.",
+    )
+    log_audit(
+        action_type=AuditLogEntry.ActionType.HANDLE_EXPELLED,
+        acting_user=request.user,
+        target_user=target_handle.user,
+        target_handle_name=target_handle.handle_name,
+        room=room,
+        reason="Revealed and expelled by the room creator.",
+    )
+    messages.success(
+        request,
+        f"{target_handle.handle_name} was revealed and expelled from the room.",
+    )
     return redirect("rooms:room_detail", pk=room.pk)
 
 

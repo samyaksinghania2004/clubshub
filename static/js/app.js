@@ -734,7 +734,7 @@
       const handleEl = document.createElement('strong');
       handleEl.textContent = item.handle_name || 'Unknown';
       headerInner.appendChild(handleEl);
-      if (showIdentities && item.identity) {
+      if (item.identity) {
         const identityEl = document.createElement('span');
         identityEl.className = 'muted-text';
         identityEl.textContent = `- ${item.identity}`;
@@ -744,6 +744,12 @@
       timeEl.className = 'muted-text';
       timeEl.textContent = `- ${item.created_at_display}`;
       headerInner.appendChild(timeEl);
+      if (item.is_revealed) {
+        const revealedTag = document.createElement('span');
+        revealedTag.className = 'tag is-link is-light';
+        revealedTag.textContent = 'revealed';
+        headerInner.appendChild(revealedTag);
+      }
       if (item.is_edited) {
         const editedTag = document.createElement('span');
         editedTag.className = 'tag is-dark is-light';

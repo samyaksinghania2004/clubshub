@@ -36,6 +36,11 @@ urlpatterns = [
         name="reject_handle",
     ),
     path(
+        "<uuid:room_pk>/handles/<uuid:handle_pk>/reveal-expel/",
+        views.reveal_and_expel_room_member_view,
+        name="reveal_and_expel_room_member",
+    ),
+    path(
         "<uuid:room_pk>/messages/<uuid:message_pk>/edit/",
         views.message_edit_view,
         name="message_edit",

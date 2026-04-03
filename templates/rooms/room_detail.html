@@ -40,10 +40,11 @@
                     <div class="chat-message__header">
                         <div>
                             <strong>{{ message_obj.handle.handle_name }}</strong>
-                            {% if show_real_identities %}
+                            {% if show_real_identities or message_obj.handle.revealed_at %}
                                 <span class="muted-text">- {{ message_obj.handle.user.display_name }} ({{ message_obj.handle.user.email }})</span>
                             {% endif %}
                             <span class="muted-text">- {{ message_obj.created_at }}</span>
+                            {% if message_obj.handle.revealed_at %}<span class="tag is-link is-light">revealed</span>{% endif %}
                             {% if message_obj.is_edited %}<span class="tag is-dark is-light">edited</span>{% endif %}
                         </div>
                         <div class="message-actions">
@@ -149,9 +150,24 @@
                 <div class="room-member-list">
                     {% for participant in participants %}
                         <div class="room-member-row">
-                            <strong>{{ participant.handle_name }}</strong>
-                            {% if show_real_identities %}
-                                <p class="muted-text">{{ participant.user.display_name }}</p>
+                            <div class="room-member-row__body">
+                                <strong>{{ participant.handle_name }}</strong>
+                                {% if show_real_identities or participant.revealed_at %}
+                                    <p class="muted-text">{{ participant.user.display_name }} ({{ participant.user.email }})</p>
+                                {% endif %}
+                            </div>
+                            {% if can_reveal_and_expel_members and participant.user_id != request.user.id %}
+                                <details class="action-menu action-menu--compact room-member-row__menu">
+                                    <summary class="action-menu__toggle button is-dark is-outlined" aria-label="Member actions">
+                                        ...
+                                    </summary>
+                                    <div class="action-menu__panel">
+                                        <form method="post" action="{% url 'rooms:reveal_and_expel_room_member' room.pk participant.pk %}" data-confirm="Reveal and expel {{ participant.handle_name }} from {{ room.name }}?">
+                                            {% csrf_token %}
+                                            <button class="action-menu__item is-danger" type="submit">Reveal and expel</button>
+                                        </form>
+                                    </div>
+                                </details>
                             {% endif %}
                         </div>
                     {% empty %}

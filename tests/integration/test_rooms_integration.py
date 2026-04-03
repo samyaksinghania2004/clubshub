@@ -278,3 +278,103 @@ class RoomsIntegrationTests(TestCase):
 
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.json()["error"], "This room is archived.")
+
+    def test_open_room_creator_can_reveal_and_expel_member(self):
+        room = DiscussionRoom.objects.create(
+            name="Commons",
+            description="A public topic room.",
+            room_type=DiscussionRoom.RoomType.TOPIC,
+            access_type=DiscussionRoom.AccessType.PUBLIC,
+            created_by=self.coordinator,
+        )
+        creator_handle = RoomHandle.objects.create(
+            room=room,
+            user=self.coordinator,
+            handle_name="LeadHandle",
+            status=RoomHandle.Status.APPROVED,
+            approved_at=timezone.now(),
+        )
+        target_handle = RoomHandle.objects.create(
+            room=room,
+            user=self.student,
+            handle_name="AnonHandle",
+            status=RoomHandle.Status.APPROVED,
+            approved_at=timezone.now(),
+        )
+        RoomHandle.objects.create(
+            room=room,
+            user=self.reporter,
+            handle_name="WitnessHandle",
+            status=RoomHandle.Status.APPROVED,
+            approved_at=timezone.now(),
+        )
+        Message.objects.create(room=room, handle=target_handle, text="hello from anon")
+
+        self.client.force_login(self.coordinator)
+        response = self.client.post(
+            reverse("rooms:reveal_and_expel_room_member", args=[room.pk, target_handle.pk]),
+        )
+
+        self.assertRedirects(
+            response,
+            reverse("rooms:room_detail", args=[room.pk]),
+            fetch_redirect_response=False,
+        )
+
+        target_handle.refresh_from_db()
+        self.assertEqual(creator_handle.status, RoomHandle.Status.APPROVED)
+        self.assertEqual(target_handle.status, RoomHandle.Status.EXPELLED)
+        self.assertIsNotNone(target_handle.revealed_at)
+        self.assertIsNotNone(target_handle.expelled_at)
+        self.assertTrue(
+            Notification.objects.filter(
+                user=self.student,
+                room=room,
+                text=f"You were revealed and removed from {room.name}",
+            ).exists()
+        )
+
+        self.client.force_login(self.reporter)
+        detail_response = self.client.get(reverse("rooms:room_detail", args=[room.pk]))
+        self.assertContains(detail_response, "Student Invitee (student@iitk.ac.in)")
+        self.assertContains(detail_response, "revealed")
+
+    def test_non_creator_cannot_reveal_and_expel_member(self):
+        room = DiscussionRoom.objects.create(
+            name="Commons",
+            description="A public topic room.",
+            room_type=DiscussionRoom.RoomType.TOPIC,
+            access_type=DiscussionRoom.AccessType.PUBLIC,
+            created_by=self.coordinator,
+        )
+        RoomHandle.objects.create(
+            room=room,
+            user=self.coordinator,
+            handle_name="LeadHandle",
+            status=RoomHandle.Status.APPROVED,
+            approved_at=timezone.now(),
+        )
+        target_handle = RoomHandle.objects.create(
+            room=room,
+            user=self.student,
+            handle_name="AnonHandle",
+            status=RoomHandle.Status.APPROVED,
+            approved_at=timezone.now(),
+        )
+        RoomHandle.objects.create(
+            room=room,
+            user=self.reporter,
+            handle_name="WitnessHandle",
+            status=RoomHandle.Status.APPROVED,
+            approved_at=timezone.now(),
+        )
+
+        self.client.force_login(self.reporter)
+        response = self.client.post(
+            reverse("rooms:reveal_and_expel_room_member", args=[room.pk, target_handle.pk]),
+        )
+
+        self.assertEqual(response.status_code, 404)
+        target_handle.refresh_from_db()
+        self.assertEqual(target_handle.status, RoomHandle.Status.APPROVED)
+        self.assertIsNone(target_handle.revealed_at)

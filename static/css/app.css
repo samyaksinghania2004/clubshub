@@ -1288,11 +1288,23 @@ body.modal-open {
 
 .room-member-row {
   display: grid;
-  gap: 0.2rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: start;
   padding: 0.75rem 0.85rem;
   border-radius: 16px;
   border: 1px solid var(--border);
   background: var(--bg-muted);
+}
+
+.room-member-row__body {
+  min-width: 0;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.room-member-row__menu {
+  align-self: start;
 }
 
 .room-member-row strong,
@@ -1938,6 +1950,10 @@ html[data-theme="light"] .auth-feature-list li {
 
   body.sidebar-open {
     overflow: hidden;
+  }
+
+  .room-member-row {
+    grid-template-columns: 1fr;
   }
 }
 
