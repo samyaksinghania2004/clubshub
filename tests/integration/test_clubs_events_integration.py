@@ -241,3 +241,13 @@ class ClubsEventsIntegrationTests(TestCase):
         self.assertContains(response, "member-role-badge")
         self.assertContains(response, reverse("core:inbox_user", args=[self.coordinator.pk]))
         self.assertNotContains(response, reverse("core:inbox_user", args=[self.member.pk]))
+
+    def test_club_list_hides_contact_email_from_public_card(self):
+        self.client.force_login(self.member)
+
+        response = self.client.get(reverse("clubs_events:club_list"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Programming Club")
+        self.assertContains(response, "members")
+        self.assertNotContains(response, self.club.contact_email)
