@@ -11,6 +11,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.mail import send_mail
 from django.shortcuts import redirect, render
 from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_POST
@@ -41,6 +42,16 @@ def _client_ip(request):
 
 def _generate_otp_code():
     return f"{SystemRandom().randrange(0, 1000000):06d}"
+
+
+def _safe_next_url(request, next_url: str) -> str:
+    if next_url and url_has_allowed_host_and_scheme(
+        next_url,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        return next_url
+    return reverse("clubs_events:event_feed")
 
 
 def _send_login_otp_email(user, code, request):
@@ -213,7 +224,7 @@ def login_view(request):
             user = form.get_user()
             login(request, user)
             messages.success(request, f"Welcome back, {user.display_name}!")
-            return redirect(next_url or "clubs_events:event_feed")
+            return redirect(_safe_next_url(request, next_url))
     else:
         form = EmailOrUsernameAuthenticationForm(request)
 
@@ -359,7 +370,7 @@ def otp_verify_view(request):
                 challenge.mark_consumed()
                 login(request, user, backend="accounts.backends.EmailOrUsernameModelBackend")
                 messages.success(request, f"Welcome back, {user.display_name}!")
-                return redirect(next_url or "clubs_events:event_feed")
+                return redirect(_safe_next_url(request, next_url))
             else:
                 challenge.failed_attempts += 1
                 update_fields = ["failed_attempts"]

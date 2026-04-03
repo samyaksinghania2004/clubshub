@@ -15,6 +15,7 @@ from django.utils.dateparse import parse_datetime
 from django.utils.formats import date_format
 from django.utils.html import escape
 from django.template.defaultfilters import linebreaksbr
+from django.views.decorators.http import require_POST
 
 from core.models import AuditLogEntry, Notification
 from core.permissions import (
@@ -53,6 +54,7 @@ from .services import (
     create_custom_channel,
     create_welcome_message,
     ensure_default_channels,
+    get_event_channel,
     get_or_create_event_channel,
 )
 
@@ -112,7 +114,7 @@ def event_feed_view(request):
 
     events = list(events)
     for event in events:
-        channel = get_or_create_event_channel(event, actor=request.user)
+        channel = get_event_channel(event)
         if channel:
             event.discuss_url = reverse(
                 "clubs_events:club_channel",
@@ -276,9 +278,6 @@ def club_detail_view(request, pk, slug=None):
     )
     is_admin = is_global_admin(request.user)
     can_manage_channels = is_admin or is_coordinator
-    ensure_default_channels(club, actor=request.user)
-    for event in club.events.filter(is_archived=False):
-        get_or_create_event_channel(event, actor=request.user)
 
     allowed_private_channel_ids = set()
     if not can_manage_channels:
@@ -320,7 +319,8 @@ def club_detail_view(request, pk, slug=None):
             active_channel = channels[0]
 
     if active_channel is None:
-        raise Http404
+        messages.error(request, f"{club.name} has no active channels available.")
+        return redirect("clubs_events:club_list")
 
     default_channel_types = {
         ClubChannel.ChannelType.ANNOUNCEMENTS,
@@ -503,6 +503,7 @@ def club_channel_send_view(request, pk, slug):
     return JsonResponse({"item": _serialize_club_message(message)})
 
 @login_required
+@require_POST
 def club_join_view(request, pk):
     club = get_object_or_404(Club, pk=pk, is_active=True)
     membership, created = ClubMembership.objects.get_or_create(
@@ -538,6 +539,7 @@ def club_join_view(request, pk):
 
 
 @login_required
+@require_POST
 def club_leave_view(request, pk):
     club = get_object_or_404(Club, pk=pk)
     membership = get_object_or_404(ClubMembership, club=club, user=request.user)
@@ -617,6 +619,7 @@ def club_channel_add_member_view(request, pk, slug):
 
 
 @login_required
+@require_POST
 def club_channel_remove_member_view(request, pk, slug, user_id):
     club = get_object_or_404(Club, pk=pk)
     channel = get_object_or_404(
@@ -625,15 +628,15 @@ def club_channel_remove_member_view(request, pk, slug, user_id):
     if not can_manage_club(request.user, club):
         return HttpResponseForbidden("Not allowed")
     membership = get_object_or_404(ClubChannelMember, channel=channel, user_id=user_id)
-    if request.method == "POST":
-        membership.delete()
-        messages.success(
-            request, f"{membership.user.display_name} removed from #{channel.name}."
-        )
+    membership.delete()
+    messages.success(
+        request, f"{membership.user.display_name} removed from #{channel.name}."
+    )
     return redirect("clubs_events:club_channel", pk=club.pk, slug=channel.slug)
 
 
 @login_required
+@require_POST
 def club_channel_delete_view(request, pk, slug):
     club = get_object_or_404(Club, pk=pk)
     channel = get_object_or_404(ClubChannel, club=club, slug=slug, is_archived=False)
@@ -646,17 +649,16 @@ def club_channel_delete_view(request, pk, slug):
     ]:
         messages.error(request, "Default channels cannot be deleted.")
         return redirect("clubs_events:club_channel", pk=club.pk, slug=channel.slug)
-    if request.method == "POST":
-        channel_name = channel.name
-        channel.is_archived = True
-        channel.save(update_fields=["is_archived", "updated_at"])
-        ClubChannelMember.objects.filter(channel=channel).delete()
-        messages.success(request, f"#{channel_name} deleted.")
-        return redirect("clubs_events:club_detail", pk=club.pk)
-    return redirect("clubs_events:club_channel", pk=club.pk, slug=channel.slug)
+    channel_name = channel.name
+    channel.is_archived = True
+    channel.save(update_fields=["is_archived", "updated_at"])
+    ClubChannelMember.objects.filter(channel=channel).delete()
+    messages.success(request, f"#{channel_name} deleted.")
+    return redirect("clubs_events:club_detail", pk=club.pk)
 
 
 @login_required
+@require_POST
 def assign_secretary_view(request, pk, user_id):
     club = get_object_or_404(Club, pk=pk)
     target_membership = get_object_or_404(ClubMembership, club=club, user_id=user_id)
@@ -676,6 +678,7 @@ def assign_secretary_view(request, pk, user_id):
 
 
 @login_required
+@require_POST
 def revoke_secretary_view(request, pk, user_id):
     club = get_object_or_404(Club, pk=pk)
     target_membership = get_object_or_404(ClubMembership, club=club, user_id=user_id)
@@ -694,12 +697,11 @@ def revoke_secretary_view(request, pk, user_id):
 
 
 @login_required
+@require_POST
 def club_member_remove_view(request, pk, user_id):
     club = get_object_or_404(Club, pk=pk)
     if not can_manage_club(request.user, club):
         return HttpResponseForbidden("Not allowed")
-    if request.method != "POST":
-        return redirect("clubs_events:club_detail", pk=club.pk)
     if request.user.id == user_id:
         messages.error(request, "Use the leave action to remove yourself.")
         return redirect("clubs_events:club_detail", pk=club.pk)
@@ -722,12 +724,11 @@ def club_member_remove_view(request, pk, user_id):
 
 
 @login_required
+@require_POST
 def club_member_restore_view(request, pk, user_id):
     club = get_object_or_404(Club, pk=pk)
     if not can_manage_club(request.user, club):
         return HttpResponseForbidden("Not allowed")
-    if request.method != "POST":
-        return redirect("clubs_events:club_detail", pk=club.pk)
     target_membership = get_object_or_404(
         ClubMembership,
         club=club,
@@ -786,7 +787,7 @@ def event_detail_view(request, pk):
     event = get_object_or_404(Event.objects.select_related("club"), pk=pk)
     registration = request.user.registrations.filter(event=event).first()
     announcements = event.announcements.filter(is_active=True)[:10]
-    event_channel = get_or_create_event_channel(event, actor=request.user)
+    event_channel = get_event_channel(event)
     discuss_url = None
     if event_channel:
         discuss_url = reverse(
@@ -856,10 +857,16 @@ def event_edit_view(request, pk):
         club_queryset=_clubs_user_can_create_for(request.user),
     )
     if request.method == "POST" and form.is_valid():
+        changed = bool(form.changed_data)
         event = form.save(commit=False)
         event.updated_by = request.user
         event.save()
         get_or_create_event_channel(event, actor=request.user)
+        if changed:
+            event.notify_registrants(
+                text=f"{event.title} was updated. Check the event page for the latest details.",
+                notification_type=Notification.Type.EVENT_UPDATED,
+            )
         messages.success(request, "Event updated successfully.")
         log_audit(
             action_type=AuditLogEntry.ActionType.EVENT_UPDATED,
@@ -881,12 +888,23 @@ def event_cancel_view(request, pk):
         event.cancellation_reason = form.cleaned_data["reason"]
         event.updated_by = request.user
         event.save()
+        event.notify_registrants(
+            text=f"{event.title} was cancelled. {event.cancellation_reason}",
+            notification_type=Notification.Type.EVENT_CANCELLED,
+        )
         messages.warning(request, "Event cancelled.")
+        log_audit(
+            action_type=AuditLogEntry.ActionType.EVENT_CANCELLED,
+            acting_user=request.user,
+            event=event,
+            reason=event.cancellation_reason,
+        )
         return redirect("clubs_events:event_detail", pk=event.pk)
     return render(request, "clubs_events/event_cancel.html", {"event": event, "form": form})
 
 
 @login_required
+@require_POST
 def event_register_view(request, pk):
     event = get_object_or_404(Event, pk=pk)
     try:
@@ -898,6 +916,7 @@ def event_register_view(request, pk):
 
 
 @login_required
+@require_POST
 def event_cancel_registration_view(request, pk):
     event = get_object_or_404(Event, pk=pk)
     try:
@@ -993,7 +1012,12 @@ def announcement_create_view(request, target_type, pk):
         elif event:
             recipients = [
                 item.user
-                for item in event.registrations.filter(status=Registration.Status.REGISTERED).select_related("user")
+                for item in event.registrations.filter(
+                    status__in=[
+                        Registration.Status.REGISTERED,
+                        Registration.Status.WAITLISTED,
+                    ]
+                ).select_related("user")
             ]
         else:
             recipients = [

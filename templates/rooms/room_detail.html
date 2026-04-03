@@ -83,7 +83,7 @@
                 </article>
             {% empty %}
                 <div class="empty-state compact-empty">
-                    <p>No messages yet. Start the conversation.</p>
+                    <p>No messages yet.</p>
                 </div>
             {% endfor %}
         </div>
@@ -92,11 +92,12 @@
             <div class="flash-card flash-info">
                 This room is archived. Messages are read-only.
             </div>
+        {% elif handle and handle.is_muted %}
+            <div class="flash-card flash-warning">
+                You are muted in this room and cannot post new messages.
+            </div>
         {% elif not read_only_mode %}
             <div class="composer-card composer-card--sticky">
-                {% if handle and handle.is_muted %}
-                    <div class="flash-card flash-warning">You are muted in this room and cannot post new messages.</div>
-                {% endif %}
                 <form method="post" class="composer-form">
                     {% csrf_token %}
                     {% for field in form %}
@@ -232,8 +233,14 @@
                             <p><strong>{{ pending.handle_name }}</strong></p>
                             <p class="muted-text">{{ pending.user.display_name }}</p>
                             <div class="surface-card__actions">
-                                <a class="button is-small is-link is-light" href="{% url 'rooms:approve_handle' room.pk pending.pk %}">Approve</a>
-                                <a class="button is-small is-danger is-light" href="{% url 'rooms:reject_handle' room.pk pending.pk %}">Reject</a>
+                                <form method="post" action="{% url 'rooms:approve_handle' room.pk pending.pk %}" class="inline-form">
+                                    {% csrf_token %}
+                                    <button class="button is-small is-link is-light" type="submit">Approve</button>
+                                </form>
+                                <form method="post" action="{% url 'rooms:reject_handle' room.pk pending.pk %}" class="inline-form">
+                                    {% csrf_token %}
+                                    <button class="button is-small is-danger is-light" type="submit">Reject</button>
+                                </form>
                             </div>
                         </div>
                     {% endfor %}

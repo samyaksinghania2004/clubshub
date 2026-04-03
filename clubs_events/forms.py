@@ -86,7 +86,7 @@ class ClubMessageForm(forms.Form):
         widget=forms.Textarea(
             attrs={
                 "rows": 2,
-                "placeholder": "Share an update, ask a question, or start the discussion...",
+                "placeholder": "Write a message...",
             }
         ),
     )

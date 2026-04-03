@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}Search · ClubsHub{% endblock %}
+{% block title %}Search - ClubsHub{% endblock %}
 {% block content %}
 <h1 class="title">Search</h1>
 <form method="get" class="box">
@@ -16,7 +16,7 @@
                 {% if clubs %}
                     <ul>
                         {% for club in clubs %}
-                            <li><a href="{% url 'clubs_events:club_detail' club.pk %}">{{ club.name }}</a> — {{ club.category }}</li>
+                            <li><a href="{% url 'clubs_events:club_detail' club.pk %}">{{ club.name }}</a> - {{ club.category }}</li>
                         {% endfor %}
                     </ul>
                 {% else %}
@@ -30,7 +30,7 @@
                 {% if events %}
                     <ul>
                         {% for event in events %}
-                            <li><a href="{% url 'clubs_events:event_detail' event.pk %}">{{ event.title }}</a> — {{ event.club.name }}</li>
+                            <li><a href="{% url 'clubs_events:event_detail' event.pk %}">{{ event.title }}</a> - {{ event.club.name }}</li>
                         {% endfor %}
                     </ul>
                 {% else %}
@@ -44,7 +44,7 @@
                 {% if rooms %}
                     <ul>
                         {% for room in rooms %}
-                            <li><a href="{% url 'rooms:room_detail' room.pk %}">{{ room.name }}</a> — {{ room.get_room_type_display }}</li>
+                            <li><a href="{% url 'rooms:room_detail' room.pk %}">{{ room.name }}</a> - {{ room.get_room_type_display }}</li>
                         {% endfor %}
                     </ul>
                 {% else %}

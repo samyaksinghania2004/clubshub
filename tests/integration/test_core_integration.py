@@ -24,6 +24,7 @@ class CoreFlowIntegrationTests(TestCase):
             password="StrongPass@123",
             email_verified=True,
             first_name="Recipient",
+            last_name="Student",
         )
 
     def test_inbox_start_form_creates_thread_and_send_endpoint_returns_json_message(self):
@@ -66,6 +67,32 @@ class CoreFlowIntegrationTests(TestCase):
         self.assertEqual(messages_response.status_code, 200)
         self.assertEqual(len(messages_response.json()["items"]), 1)
 
+    def test_inbox_start_form_matches_first_and_last_name(self):
+        self.client.force_login(self.sender)
+
+        first_name_response = self.client.post(
+            reverse("core:inbox"),
+            data={"identifier": self.recipient.first_name},
+        )
+        thread = DirectMessageThread.objects.get()
+        self.assertRedirects(
+            first_name_response,
+            reverse("core:inbox_thread", args=[thread.pk]),
+            fetch_redirect_response=False,
+        )
+
+        DirectMessageThread.objects.all().delete()
+        last_name_response = self.client.post(
+            reverse("core:inbox"),
+            data={"identifier": self.recipient.last_name},
+        )
+        thread = DirectMessageThread.objects.get()
+        self.assertRedirects(
+            last_name_response,
+            reverse("core:inbox_thread", args=[thread.pk]),
+            fetch_redirect_response=False,
+        )
+
     def test_inbox_user_shortcut_creates_or_reuses_thread(self):
         self.client.force_login(self.sender)
 
@@ -92,7 +119,7 @@ class CoreFlowIntegrationTests(TestCase):
         notification = Notification.objects.create(
             user=self.sender,
             text="Open the help page",
-            body="Helpful guidance is waiting here.",
+            body="Open the help page from this notification.",
             action_url=reverse("core:help"),
         )
 
@@ -113,3 +140,47 @@ class CoreFlowIntegrationTests(TestCase):
 
         notification.refresh_from_db()
         self.assertTrue(notification.is_read)
+
+    def test_notifications_ignore_unsafe_action_urls_and_mark_read_requires_post(self):
+        notification = Notification.objects.create(
+            user=self.sender,
+            text="Unsafe link",
+            body="Should not redirect off-site.",
+            action_url="https://example.com/escape",
+        )
+
+        self.client.force_login(self.sender)
+
+        feed_response = self.client.get(reverse("core:notifications_feed"))
+        self.assertEqual(feed_response.status_code, 200)
+        self.assertEqual(feed_response.json()["items"][0]["url"], reverse("core:notifications"))
+
+        open_response = self.client.get(reverse("core:open_notification", args=[notification.pk]))
+        self.assertRedirects(
+            open_response,
+            reverse("core:notifications"),
+            fetch_redirect_response=False,
+        )
+
+        get_mark_response = self.client.get(
+            reverse("core:mark_notification_read", args=[notification.pk])
+        )
+        self.assertEqual(get_mark_response.status_code, 405)
+
+        post_mark_response = self.client.post(
+            reverse("core:mark_notification_read", args=[notification.pk])
+        )
+        self.assertRedirects(
+            post_mark_response,
+            reverse("core:notifications"),
+            fetch_redirect_response=False,
+        )
+
+    def test_inbox_block_requires_post(self):
+        thread = DirectMessageThread.objects.create()
+        thread.participants.add(self.sender, self.recipient)
+
+        self.client.force_login(self.sender)
+        response = self.client.get(reverse("core:inbox_block", args=[thread.pk, "block"]))
+
+        self.assertEqual(response.status_code, 405)

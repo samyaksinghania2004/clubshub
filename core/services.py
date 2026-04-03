@@ -1,6 +1,20 @@
 from __future__ import annotations
 
+from django.utils.http import url_has_allowed_host_and_scheme
+
 from core.models import AuditLogEntry, Notification
+
+
+def _sanitize_action_url(action_url: str) -> str:
+    action_url = (action_url or "").strip()
+    if (
+        action_url
+        and action_url.startswith("/")
+        and not action_url.startswith("//")
+        and url_has_allowed_host_and_scheme(action_url, allowed_hosts=set())
+    ):
+        return action_url
+    return ""
 
 
 def create_notification(
@@ -19,7 +33,7 @@ def create_notification(
         user=user,
         text=(text or "")[:255],
         body=(body or "")[:3000],
-        action_url=(action_url or "")[:255],
+        action_url=_sanitize_action_url(action_url)[:255],
         notification_type=notification_type,
         club=club,
         event=event,

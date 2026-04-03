@@ -61,7 +61,7 @@
             </div>
             {% if not is_member %}
                 <div class="club-chat-cta">
-                    <p class="muted-text">Join the club from the sidebar to send messages. You can keep reading for now.</p>
+                    <p class="muted-text">Join the club to send messages in this channel.</p>
                 </div>
             {% endif %}
         </div>
@@ -82,7 +82,7 @@
                 </article>
             {% empty %}
                 <div class="empty-state compact-empty">
-                    <p>No messages yet. Start the conversation.</p>
+                    <p>No messages yet.</p>
                 </div>
             {% endfor %}
         </div>
@@ -290,10 +290,16 @@
                                         {% endif %}
                                         {% if can_manage_members and m.user_id != request.user.id %}
                                             {% if m.local_role == 'member' %}
-                                                <a class="button is-dark is-outlined" href="{% url 'clubs_events:assign_secretary' club.pk m.user_id %}">Make secretary</a>
+                                                <form method="post" action="{% url 'clubs_events:assign_secretary' club.pk m.user_id %}">
+                                                    {% csrf_token %}
+                                                    <button class="button is-dark is-outlined" type="submit">Make secretary</button>
+                                                </form>
                                             {% endif %}
                                             {% if m.local_role == 'secretary' %}
-                                                <a class="button is-dark is-outlined" href="{% url 'clubs_events:revoke_secretary' club.pk m.user_id %}">Revoke secretary</a>
+                                                <form method="post" action="{% url 'clubs_events:revoke_secretary' club.pk m.user_id %}">
+                                                    {% csrf_token %}
+                                                    <button class="button is-dark is-outlined" type="submit">Revoke secretary</button>
+                                                </form>
                                             {% endif %}
                                             <form method="post" action="{% url 'clubs_events:club_member_remove' club.pk m.user_id %}" data-confirm="Remove {{ m.user.display_name }} from {{ club.name }}?">
                                                 {% csrf_token %}
@@ -365,10 +371,16 @@
                                         {% endif %}
                                         {% if can_manage_members and m.user_id != request.user.id %}
                                             {% if m.local_role == 'member' %}
-                                                <a class="button is-dark is-outlined" href="{% url 'clubs_events:assign_secretary' club.pk m.user_id %}">Make secretary</a>
+                                                <form method="post" action="{% url 'clubs_events:assign_secretary' club.pk m.user_id %}">
+                                                    {% csrf_token %}
+                                                    <button class="button is-dark is-outlined" type="submit">Make secretary</button>
+                                                </form>
                                             {% endif %}
                                             {% if m.local_role == 'secretary' %}
-                                                <a class="button is-dark is-outlined" href="{% url 'clubs_events:revoke_secretary' club.pk m.user_id %}">Revoke secretary</a>
+                                                <form method="post" action="{% url 'clubs_events:revoke_secretary' club.pk m.user_id %}">
+                                                    {% csrf_token %}
+                                                    <button class="button is-dark is-outlined" type="submit">Revoke secretary</button>
+                                                </form>
                                             {% endif %}
                                             <form method="post" action="{% url 'clubs_events:club_member_remove' club.pk m.user_id %}" data-confirm="Remove {{ m.user.display_name }} from {{ club.name }}?">
                                                 {% csrf_token %}

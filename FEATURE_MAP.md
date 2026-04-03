@@ -4,25 +4,25 @@ This file maps the current implementation to the requirements in the SRS.
 
 ## Implemented end-to-end
 
-- F1–F4: IITK-only account creation, authentication, roles, permission checks.
-- F5–F9: Club creation/editing, representative assignment, browsing, follow/unfollow, follower visibility for managers.
-- F10–F18: Event creation/editing/cancellation, feed filters, registration, cancellation, waitlist promotion.
-- F19–F20: Keyword search across clubs, events and rooms with input length limits.
-- F21–F28: Room creation, public/restricted access, anonymous handles, message posting, edit/delete window, message reporting.
-- F29–F38: Moderation dashboard, delete/mute/expel/reveal actions, audit logging, notifications view.
+- F1-F4: IITK-only account creation, email verification, password login, email OTP login, roles, and permission checks.
+- F5-F9: Club creation/editing, club browsing, membership join/leave/remove/restore, coordinator or secretary assignment, and club channels.
+- F10-F18: Event creation/editing/cancellation, feed filters, registration, cancellation, waitlist promotion, announcements, and attendance management.
+- F19-F20: Keyword search across clubs, events, and rooms with bounded input.
+- F21-F28: Open-room creation, public or invite-only access, anonymous handles, message posting, edit window, delete flow, and message reporting.
+- F29-F38: Moderation dashboard, delete/mute/expel/reveal actions, audit logging, and notifications.
 - F39: Basic analytics and attendance percentages.
 
 ## Intentionally simplified for the first website iteration
 
-- Authentication uses IITK email + password instead of OTP/SSO.
-- Notifications are in-app and use Django's console email backend by default.
-- Discussion rooms use standard page refresh instead of real-time WebSockets.
-- Restricted room access is handled by pending requests + manual approval.
+- IITK SSO is not implemented. Authentication currently uses password login and email OTP.
+- Notifications are primarily in-app. Verification, password reset, and OTP flows use email.
+- Club chat, room chat, and inbox updates use polling rather than WebSockets.
+- The open-room listing in the current UI focuses on topic rooms. Club and event discussion use club channels.
 
-## Good next milestones
+## Possible follow-up work
 
-1. Replace password auth with IITK SSO or email-OTP.
+1. Add IITK SSO if it becomes available for the project.
 2. Add REST API endpoints for the mobile app.
 3. Add richer moderator policy controls and global bans UI.
-4. Add background jobs / asynchronous notification delivery.
-5. Add production deployment with Gunicorn, Nginx and PostgreSQL.
+4. Add background jobs or asynchronous notification delivery.
+5. Add production deployment with Gunicorn, Nginx, and PostgreSQL.

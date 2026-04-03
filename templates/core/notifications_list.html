@@ -1,11 +1,11 @@
 {% extends 'base.html' %}
-{% block title %}Notifications · ClubsHub{% endblock %}
+{% block title %}Notifications - ClubsHub{% endblock %}
 {% block content %}
 <section class="page-hero">
     <div>
         <p class="eyebrow">Notifications</p>
         <h1 class="page-title">Notifications</h1>
-        <p class="page-subtitle">Announcements, invites, moderation outcomes and event updates all show up here.</p>
+        <p class="page-subtitle">Announcements, invites, moderation outcomes, and event updates appear here.</p>
     </div>
     <form method="post">
         {% csrf_token %}
@@ -29,14 +29,17 @@
             <div class="notification-card__actions">
                 <a class="button is-link" href="{% url 'core:open_notification' notification.pk %}">Open</a>
                 {% if not notification.is_read %}
-                    <a class="button is-dark is-outlined" href="{% url 'core:mark_notification_read' notification.pk %}">Mark read</a>
+                    <form method="post" action="{% url 'core:mark_notification_read' notification.pk %}" class="inline-form">
+                        {% csrf_token %}
+                        <button class="button is-dark is-outlined" type="submit">Mark read</button>
+                    </form>
                 {% endif %}
             </div>
         </article>
     {% empty %}
         <div class="empty-state">
             <h2>No notifications yet</h2>
-            <p>When your clubs post announcements or open rooms send invites, they will appear here.</p>
+            <p>New announcements, invites, and moderation updates will appear here.</p>
         </div>
     {% endfor %}
 </section>

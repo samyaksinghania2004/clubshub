@@ -26,7 +26,7 @@ The current service worker is intentionally lightweight:
 
 - it precaches the offline page, app CSS/JS, and the app icons
 - page navigations use a network-first strategy with fallback to `/offline/`
-- same-origin `/static/` assets use cache-first behavior with background refresh
+- same-origin `/static/` assets use a network-first strategy and fall back to cache if the network request fails
 - dynamic HTML and JSON endpoints are not heavily cached, so event, room, inbox, and notification data stay fresh
 
 This means the app is installable and resilient, but it is not designed for full offline interaction.

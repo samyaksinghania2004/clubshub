@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from datetime import timedelta
 from urllib.parse import urlsplit
 from unittest.mock import patch
 
@@ -8,6 +9,7 @@ from django.contrib.auth import get_user_model
 from django.core import mail
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 
 from accounts.models import EmailOTPChallenge
 
@@ -211,3 +213,72 @@ class AccountsFlowIntegrationTests(TestCase):
             fetch_redirect_response=False,
         )
         self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_login_ignores_unsafe_next_redirects(self):
+        user = User.objects.create_user(
+            username="nextuser",
+            email="nextuser@iitk.ac.in",
+            password=self.password,
+            email_verified=True,
+        )
+
+        unsafe_response = self.client.post(
+            reverse("accounts:login"),
+            data={
+                "identifier": user.email,
+                "password": self.password,
+                "next": "https://example.com/steal-session",
+            },
+        )
+        self.assertRedirects(
+            unsafe_response,
+            reverse("clubs_events:event_feed"),
+            fetch_redirect_response=False,
+        )
+
+        self.client.post(reverse("accounts:logout"))
+        safe_response = self.client.post(
+            reverse("accounts:login"),
+            data={
+                "identifier": user.email,
+                "password": self.password,
+                "next": reverse("core:notifications"),
+            },
+        )
+        self.assertRedirects(
+            safe_response,
+            reverse("core:notifications"),
+            fetch_redirect_response=False,
+        )
+
+    def test_otp_verify_ignores_unsafe_next_redirects(self):
+        user = User.objects.create_user(
+            username="otpnext",
+            email="otpnext@iitk.ac.in",
+            password=self.password,
+            email_verified=True,
+        )
+        challenge = EmailOTPChallenge(
+            user=user,
+            email=user.email,
+            purpose=EmailOTPChallenge.Purpose.LOGIN,
+            expires_at=timezone.now() + timedelta(minutes=5),
+            request_ip="127.0.0.1",
+            user_agent="integration-test",
+        )
+        challenge.set_code("654321")
+        challenge.save()
+
+        unsafe_response = self.client.post(
+            reverse("accounts:otp_verify"),
+            data={
+                "email": user.email,
+                "code": "654321",
+                "next": "https://example.com/phish",
+            },
+        )
+        self.assertRedirects(
+            unsafe_response,
+            reverse("clubs_events:event_feed"),
+            fetch_redirect_response=False,
+        )

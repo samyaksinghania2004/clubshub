@@ -11,11 +11,13 @@ from django.http import HttpResponseNotAllowed, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.templatetags.static import static
 from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.utils.formats import date_format
 from django.template.defaultfilters import linebreaksbr
 from django.utils.html import escape
+from django.views.decorators.http import require_POST
 
 from clubs_events.models import Club, Event
 from rooms.models import DiscussionRoom
@@ -86,6 +88,38 @@ def offline_view(request):
     return render(request, "core/offline.html")
 
 
+def _safe_notification_action_url(request, action_url: str) -> str:
+    action_url = (action_url or "").strip()
+    if (
+        action_url
+        and action_url.startswith("/")
+        and not action_url.startswith("//")
+        and url_has_allowed_host_and_scheme(
+            action_url,
+            allowed_hosts={request.get_host()},
+            require_https=request.is_secure(),
+        )
+    ):
+        return action_url
+    return ""
+
+
+def _notification_target_url(request, notification) -> str:
+    safe_action_url = _safe_notification_action_url(request, notification.action_url)
+    if safe_action_url:
+        return safe_action_url
+    if notification.message_id and notification.room_id:
+        params = urlencode({"focus": str(notification.message_id), "source": "notification"})
+        return f"{reverse('rooms:room_detail', args=[notification.room_id])}?{params}"
+    if notification.room_id:
+        return reverse("rooms:room_detail", args=[notification.room_id])
+    if notification.event_id:
+        return reverse("clubs_events:event_detail", args=[notification.event_id])
+    if notification.club_id:
+        return reverse("clubs_events:club_detail", args=[notification.club_id])
+    return reverse("core:notifications")
+
+
 @login_required
 def notifications_list_view(request):
     notifications = request.user.notifications.select_related(
@@ -102,6 +136,7 @@ def notifications_list_view(request):
 
 
 @login_required
+@require_POST
 def mark_notification_read_view(request, pk):
     notification = get_object_or_404(Notification, pk=pk, user=request.user)
     notification.is_read = True
@@ -115,19 +150,7 @@ def open_notification_view(request, pk):
     if not notification.is_read:
         notification.is_read = True
         notification.save(update_fields=["is_read"])
-
-    if notification.action_url:
-        return redirect(notification.action_url)
-    if notification.message_id and notification.room_id:
-        params = urlencode({"focus": str(notification.message_id), "source": "notification"})
-        return redirect(f"{reverse('rooms:room_detail', args=[notification.room_id])}?{params}")
-    if notification.room_id:
-        return redirect("rooms:room_detail", pk=notification.room_id)
-    if notification.event_id:
-        return redirect("clubs_events:event_detail", pk=notification.event_id)
-    if notification.club_id:
-        return redirect("clubs_events:club_detail", pk=notification.club_id)
-    return redirect("core:notifications")
+    return redirect(_notification_target_url(request, notification))
 
 
 @login_required
@@ -138,19 +161,7 @@ def notifications_feed_view(request):
     )
     items = []
     for notification in notifications:
-        if notification.action_url:
-            url = notification.action_url
-        elif notification.message_id and notification.room_id:
-            params = urlencode({"focus": str(notification.message_id), "source": "notification"})
-            url = f"{reverse('rooms:room_detail', args=[notification.room_id])}?{params}"
-        elif notification.room_id:
-            url = reverse("rooms:room_detail", args=[notification.room_id])
-        elif notification.event_id:
-            url = reverse("clubs_events:event_detail", args=[notification.event_id])
-        elif notification.club_id:
-            url = reverse("clubs_events:club_detail", args=[notification.club_id])
-        else:
-            url = reverse("core:notifications")
+        url = _notification_target_url(request, notification)
         items.append(
             {
                 "id": str(notification.pk),
@@ -331,9 +342,8 @@ def inbox_thread_view(request, thread_pk):
 
 
 @login_required
+@require_POST
 def inbox_block_view(request, thread_pk, action):
-    if request.method != "POST":
-        return redirect("core:inbox_thread", thread_pk=thread_pk)
     thread = get_object_or_404(
         DirectMessageThread.objects.filter(participants=request.user),
         pk=thread_pk,

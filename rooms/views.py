@@ -15,6 +15,7 @@ from django.utils.dateparse import parse_datetime
 from django.utils.formats import date_format
 from django.utils.html import escape
 from django.template.defaultfilters import linebreaksbr
+from django.views.decorators.http import require_POST
 
 from core.models import AuditLogEntry, Notification
 from core.permissions import (
@@ -51,6 +52,12 @@ def room_list_view(request):
             distinct=True,
         )
     )
+    active_topic_room_count = DiscussionRoom.objects.filter(
+        created_by=request.user,
+        room_type=DiscussionRoom.RoomType.TOPIC,
+        is_archived=False,
+    ).count()
+    can_create_room_any = can_create_room(request.user) and active_topic_room_count < 5
     return render(
         request,
         "rooms/room_list.html",
@@ -63,7 +70,7 @@ def room_list_view(request):
             )
             .select_related("room")
             .order_by("room__name"),
-            "can_create_room_any": True,
+            "can_create_room_any": can_create_room_any,
         },
     )
 
@@ -284,22 +291,22 @@ def join_room_view(request, pk):
 
 
 @login_required
+@require_POST
 def leave_room_view(request, pk):
     room = get_object_or_404(DiscussionRoom, pk=pk)
     handle = get_object_or_404(RoomHandle, room=room, user=request.user)
-    if request.method == "POST":
-        handle.status = RoomHandle.Status.LEFT
-        handle.is_muted = False
-        handle.save(update_fields=["status", "is_muted"])
-        if room.access_type == DiscussionRoom.AccessType.PRIVATE_INVITE_ONLY:
-            RoomInvite.objects.filter(
-                room=room,
-                recipient=request.user,
-            ).exclude(status=RoomInvite.Status.REVOKED).update(
-                status=RoomInvite.Status.REVOKED,
-                updated_at=timezone.now(),
-            )
-        messages.info(request, f"You left {room.name}. You can rejoin later with a fresh request.")
+    handle.status = RoomHandle.Status.LEFT
+    handle.is_muted = False
+    handle.save(update_fields=["status", "is_muted"])
+    if room.access_type == DiscussionRoom.AccessType.PRIVATE_INVITE_ONLY:
+        RoomInvite.objects.filter(
+            room=room,
+            recipient=request.user,
+        ).exclude(status=RoomInvite.Status.REVOKED).update(
+            status=RoomInvite.Status.REVOKED,
+            updated_at=timezone.now(),
+        )
+    messages.info(request, f"You left {room.name}. You can rejoin later with a fresh request.")
     return redirect("rooms:room_list")
 
 
@@ -462,10 +469,13 @@ def invite_user_view(request, pk):
 
 
 @login_required
+@require_POST
 def respond_invite_view(request, invite_pk, decision):
     invite = get_object_or_404(RoomInvite, pk=invite_pk, recipient=request.user)
     if invite.status != RoomInvite.Status.PENDING:
         return redirect("core:notifications")
+    if decision not in {"accept", "reject"}:
+        raise Http404
     invite.status = (
         RoomInvite.Status.ACCEPTED if decision == "accept" else RoomInvite.Status.REJECTED
     )
@@ -484,6 +494,7 @@ def respond_invite_view(request, invite_pk, decision):
 
 
 @login_required
+@require_POST
 def approve_handle_view(request, room_pk, handle_pk):
     room = get_object_or_404(DiscussionRoom, pk=room_pk)
     if not can_manage_room(request.user, room):
@@ -497,6 +508,7 @@ def approve_handle_view(request, room_pk, handle_pk):
 
 
 @login_required
+@require_POST
 def reject_handle_view(request, room_pk, handle_pk):
     room = get_object_or_404(DiscussionRoom, pk=room_pk)
     if not can_manage_room(request.user, room):
@@ -508,9 +520,8 @@ def reject_handle_view(request, room_pk, handle_pk):
 
 
 @login_required
+@require_POST
 def reveal_and_expel_room_member_view(request, room_pk, handle_pk):
-    if request.method != "POST":
-        return HttpResponseNotAllowed(["POST"])
     room = get_object_or_404(DiscussionRoom, pk=room_pk)
     viewer_handle = RoomHandle.objects.filter(
         room=room,
@@ -587,6 +598,7 @@ def message_edit_view(request, room_pk, message_pk):
 
 
 @login_required
+@require_POST
 def message_delete_view(request, room_pk, message_pk):
     room = get_object_or_404(DiscussionRoom, pk=room_pk)
     message_obj = get_object_or_404(Message, pk=message_pk, room=room)

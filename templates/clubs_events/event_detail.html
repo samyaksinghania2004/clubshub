@@ -39,9 +39,15 @@
     <div class="hero-actions">
         <span class="tag is-link is-light">{{ event.get_status_display }}</span>
         {% if registration and registration.status == 'registered' or registration and registration.status == 'waitlisted' %}
-            <a class="button is-warning" href="{% url 'clubs_events:event_cancel_registration' event.pk %}">Cancel registration</a>
+            <form method="post" action="{% url 'clubs_events:event_cancel_registration' event.pk %}" class="inline-form">
+                {% csrf_token %}
+                <button class="button is-warning" type="submit">Cancel registration</button>
+            </form>
         {% elif event.is_open_for_registration %}
-            <a class="button is-link" href="{% url 'clubs_events:event_register' event.pk %}">Register</a>
+            <form method="post" action="{% url 'clubs_events:event_register' event.pk %}" class="inline-form">
+                {% csrf_token %}
+                <button class="button is-link" type="submit">Register</button>
+            </form>
         {% endif %}
         {% if can_manage_event %}
             <a class="button is-dark is-outlined" href="{% url 'clubs_events:event_edit' event.pk %}">Edit</a>

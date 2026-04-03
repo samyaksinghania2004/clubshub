@@ -253,7 +253,7 @@ class RoomsIntegrationTests(TestCase):
         self.assertContains(response, "Archived room. Messages are read-only.")
         self.assertContains(response, "Archived")
         self.assertNotContains(response, 'data-live-chat="room"')
-        self.assertNotContains(response, "Share an update, ask a question, or start the discussion...")
+        self.assertNotContains(response, "Write a message...")
 
     def test_archived_room_send_returns_json_error_instead_of_404(self):
         room = DiscussionRoom.objects.create(
@@ -281,6 +281,101 @@ class RoomsIntegrationTests(TestCase):
 
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.json()["error"], "This room is archived.")
+
+    def test_room_create_cta_hides_after_limit(self):
+        for index in range(5):
+            DiscussionRoom.objects.create(
+                name=f"Room {index}",
+                description="A public topic room.",
+                room_type=DiscussionRoom.RoomType.TOPIC,
+                access_type=DiscussionRoom.AccessType.PUBLIC,
+                created_by=self.student,
+            )
+
+        self.client.force_login(self.student)
+        response = self.client.get(reverse("rooms:room_list"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Create open room")
+
+    def test_room_message_delete_requires_post(self):
+        room = DiscussionRoom.objects.create(
+            name="Commons",
+            description="A public topic room.",
+            room_type=DiscussionRoom.RoomType.TOPIC,
+            access_type=DiscussionRoom.AccessType.PUBLIC,
+            created_by=self.coordinator,
+        )
+        handle = RoomHandle.objects.create(
+            room=room,
+            user=self.student,
+            handle_name="StudentHandle",
+            status=RoomHandle.Status.APPROVED,
+            approved_at=timezone.now(),
+        )
+        message = Message.objects.create(room=room, handle=handle, text="hello")
+
+        self.client.force_login(self.student)
+        response = self.client.get(reverse("rooms:message_delete", args=[room.pk, message.pk]))
+
+        self.assertEqual(response.status_code, 405)
+        message.refresh_from_db()
+        self.assertFalse(message.is_deleted)
+
+    def test_leave_room_requires_post(self):
+        room = DiscussionRoom.objects.create(
+            name="Commons",
+            description="A public topic room.",
+            room_type=DiscussionRoom.RoomType.TOPIC,
+            access_type=DiscussionRoom.AccessType.PUBLIC,
+            created_by=self.coordinator,
+        )
+        handle = RoomHandle.objects.create(
+            room=room,
+            user=self.student,
+            handle_name="StudentHandle",
+            status=RoomHandle.Status.APPROVED,
+            approved_at=timezone.now(),
+        )
+
+        self.client.force_login(self.student)
+        response = self.client.get(reverse("rooms:leave_room", args=[room.pk]))
+
+        self.assertEqual(response.status_code, 405)
+        handle.refresh_from_db()
+        self.assertEqual(handle.status, RoomHandle.Status.APPROVED)
+
+    def test_reveal_and_expel_requires_post(self):
+        room = DiscussionRoom.objects.create(
+            name="Commons",
+            description="A public topic room.",
+            room_type=DiscussionRoom.RoomType.TOPIC,
+            access_type=DiscussionRoom.AccessType.PUBLIC,
+            created_by=self.coordinator,
+        )
+        RoomHandle.objects.create(
+            room=room,
+            user=self.coordinator,
+            handle_name="LeadHandle",
+            status=RoomHandle.Status.APPROVED,
+            approved_at=timezone.now(),
+        )
+        target_handle = RoomHandle.objects.create(
+            room=room,
+            user=self.student,
+            handle_name="AnonHandle",
+            status=RoomHandle.Status.APPROVED,
+            approved_at=timezone.now(),
+        )
+
+        self.client.force_login(self.coordinator)
+        response = self.client.get(
+            reverse("rooms:reveal_and_expel_room_member", args=[room.pk, target_handle.pk])
+        )
+
+        self.assertEqual(response.status_code, 405)
+        target_handle.refresh_from_db()
+        self.assertEqual(target_handle.status, RoomHandle.Status.APPROVED)
 
     def test_open_room_creator_can_reveal_and_expel_member(self):
         room = DiscussionRoom.objects.create(

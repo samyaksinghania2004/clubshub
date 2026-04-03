@@ -55,6 +55,8 @@ class DirectMessageStartForm(forms.Form):
             ).filter(
                 models.Q(username__icontains=identifier)
                 | models.Q(email__icontains=identifier)
+                | models.Q(first_name__icontains=identifier)
+                | models.Q(last_name__icontains=identifier)
             ).order_by("username").first()
         if user is None:
             raise forms.ValidationError("User not found.")

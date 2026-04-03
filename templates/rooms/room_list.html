@@ -1,11 +1,11 @@
 {% extends 'base.html' %}
-{% block title %}Open Rooms · ClubsHub{% endblock %}
+{% block title %}Open Rooms - ClubsHub{% endblock %}
 {% block content %}
 <section class="page-hero">
     <div>
         <p class="eyebrow">Open rooms</p>
         <h1 class="page-title">Open Rooms</h1>
-        <p class="page-subtitle">Public and invite-only rooms where anyone can chat with a unique handle.</p>
+        <p class="page-subtitle">Public and invite-only rooms where anyone can chat with a handle.</p>
     </div>
     {% if can_create_room_any %}
         <a class="button is-link is-medium" href="{% url 'rooms:room_create' %}">Create open room</a>
@@ -45,7 +45,7 @@
         {% empty %}
             <div class="empty-state">
                 <h2>No open rooms found</h2>
-                <p>Try another search term or create a new room.</p>
+                <p>Try another search term.</p>
             </div>
         {% endfor %}
     </section>

@@ -77,6 +77,36 @@ class ClubsEventsIntegrationTests(TestCase):
             created_by=self.coordinator,
         )
 
+    def test_new_club_gets_default_channels_on_creation(self):
+        club = Club.objects.create(
+            name="Electronics Club",
+            category="Tech",
+            description="Circuits and hardware.",
+            contact_email="electronics@iitk.ac.in",
+        )
+
+        self.assertTrue(
+            ClubChannel.objects.filter(
+                club=club,
+                channel_type=ClubChannel.ChannelType.ANNOUNCEMENTS,
+                is_archived=False,
+            ).exists()
+        )
+        self.assertTrue(
+            ClubChannel.objects.filter(
+                club=club,
+                channel_type=ClubChannel.ChannelType.WELCOME,
+                is_archived=False,
+            ).exists()
+        )
+        self.assertTrue(
+            ClubChannel.objects.filter(
+                club=club,
+                channel_type=ClubChannel.ChannelType.MAIN,
+                is_archived=False,
+            ).exists()
+        )
+
     def test_joining_club_creates_membership_and_welcome_message(self):
         joiner = User.objects.create_user(
             username="joiner",
@@ -189,6 +219,104 @@ class ClubsEventsIntegrationTests(TestCase):
 
         notification.refresh_from_db()
         self.assertTrue(notification.is_read)
+
+    def test_event_announcement_notifies_waitlisted_attendee(self):
+        self.event.capacity = 1
+        self.event.save(update_fields=["capacity", "updated_at"])
+
+        extra_attendee = User.objects.create_user(
+            username="waitlisted",
+            email="waitlisted@iitk.ac.in",
+            password="StrongPass@123",
+            email_verified=True,
+            first_name="Wait",
+            last_name="Listed",
+        )
+
+        self.client.force_login(self.attendee)
+        self.client.post(reverse("clubs_events:event_register", args=[self.event.pk]))
+        self.client.force_login(extra_attendee)
+        self.client.post(reverse("clubs_events:event_register", args=[self.event.pk]))
+
+        waitlisted_registration = Registration.objects.get(event=self.event, user=extra_attendee)
+        self.assertEqual(waitlisted_registration.status, Registration.Status.WAITLISTED)
+
+        self.client.force_login(self.coordinator)
+        self.client.post(
+            reverse("clubs_events:announcement_create", args=["event", self.event.pk]),
+            data={"title": "Queue update", "body": "Please keep an eye on your status."},
+        )
+
+        self.assertTrue(
+            Notification.objects.filter(
+                user=extra_attendee,
+                notification_type=Notification.Type.ANNOUNCEMENT,
+                event=self.event,
+            ).exists()
+        )
+
+    def test_event_pages_do_not_create_event_channel_on_read(self):
+        self.assertFalse(ClubChannel.objects.filter(event=self.event).exists())
+
+        self.client.force_login(self.member)
+        feed_response = self.client.get(reverse("clubs_events:event_feed"))
+        detail_response = self.client.get(reverse("clubs_events:event_detail", args=[self.event.pk]))
+
+        self.assertEqual(feed_response.status_code, 200)
+        self.assertEqual(detail_response.status_code, 200)
+        self.assertFalse(ClubChannel.objects.filter(event=self.event).exists())
+
+    def test_event_register_requires_post_and_secretary_role_changes_require_post(self):
+        self.client.force_login(self.attendee)
+        register_get = self.client.get(reverse("clubs_events:event_register", args=[self.event.pk]))
+        self.assertEqual(register_get.status_code, 405)
+
+        self.client.force_login(self.coordinator)
+        assign_get = self.client.get(
+            reverse("clubs_events:assign_secretary", args=[self.club.pk, self.member.pk])
+        )
+        revoke_get = self.client.get(
+            reverse("clubs_events:revoke_secretary", args=[self.club.pk, self.member.pk])
+        )
+        self.assertEqual(assign_get.status_code, 405)
+        self.assertEqual(revoke_get.status_code, 405)
+
+    def test_club_management_mutations_require_post(self):
+        private_channel = ClubChannel.objects.create(
+            club=self.club,
+            name="Leads",
+            slug="leads",
+            channel_type=ClubChannel.ChannelType.CUSTOM,
+            is_private=True,
+            created_by=self.coordinator,
+        )
+        ClubChannelMember.objects.create(
+            channel=private_channel,
+            user=self.member,
+            added_by=self.coordinator,
+        )
+
+        self.client.force_login(self.coordinator)
+        remove_member_get = self.client.get(
+            reverse("clubs_events:club_member_remove", args=[self.club.pk, self.member.pk])
+        )
+        restore_member_get = self.client.get(
+            reverse("clubs_events:club_member_restore", args=[self.club.pk, self.member.pk])
+        )
+        delete_channel_get = self.client.get(
+            reverse("clubs_events:club_channel_delete", args=[self.club.pk, private_channel.slug])
+        )
+        remove_channel_member_get = self.client.get(
+            reverse(
+                "clubs_events:club_channel_remove_member",
+                args=[self.club.pk, private_channel.slug, self.member.pk],
+            )
+        )
+
+        self.assertEqual(remove_member_get.status_code, 405)
+        self.assertEqual(restore_member_get.status_code, 405)
+        self.assertEqual(delete_channel_get.status_code, 405)
+        self.assertEqual(remove_channel_member_get.status_code, 405)
 
     def test_event_detail_shows_single_discuss_button_for_student(self):
         self.client.force_login(self.member)

@@ -3,9 +3,9 @@
 {% block content %}
 <section class="page-hero">
     <div>
-        <p class="eyebrow">Discover</p>
+        <p class="eyebrow">Events</p>
         <h1 class="page-title">Upcoming Events</h1>
-        <p class="page-subtitle">Track registrations, browse campus activity and manage event publishing from one place.</p>
+        <p class="page-subtitle">Browse upcoming events and check your registration status.</p>
     </div>
     {% if can_create_event_any %}
         <a class="button is-link is-medium" href="{% url 'clubs_events:event_create' %}">Create event</a>
@@ -16,7 +16,7 @@
     <details class="filter-disclosure" {% if q or selected_club or tag or date_from or date_to %}open{% endif %}>
         <summary class="filter-summary">
             <span>Filters</span>
-            <span class="muted-text">Refine upcoming events</span>
+            <span class="muted-text">Filter upcoming events</span>
         </summary>
         <form method="get" class="filter-grid">
         <div>

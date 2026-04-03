@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}Profile · ClubsHub{% endblock %}
+{% block title %}Profile - ClubsHub{% endblock %}
 {% block content %}
 <div class="columns">
     <div class="column is-one-third">
@@ -17,7 +17,7 @@
             {% if memberships %}
                 <ul>
                     {% for m in memberships %}
-                        <li><a href="{% url 'clubs_events:club_detail' m.club.pk %}">{{ m.club.name }}</a> — {{ m.get_local_role_display }} ({{ m.get_status_display }})</li>
+                        <li><a href="{% url 'clubs_events:club_detail' m.club.pk %}">{{ m.club.name }}</a> - {{ m.get_local_role_display }} ({{ m.get_status_display }})</li>
                     {% endfor %}
                 </ul>
             {% else %}

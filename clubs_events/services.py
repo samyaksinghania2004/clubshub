@@ -97,6 +97,14 @@ def get_or_create_event_channel(event: Event, actor=None) -> Optional[ClubChanne
     return channel
 
 
+def get_event_channel(event: Event) -> Optional[ClubChannel]:
+    return ClubChannel.objects.filter(
+        club=event.club,
+        event=event,
+        is_archived=False,
+    ).first()
+
+
 def create_welcome_message(club: Club, user) -> None:
     ensure_default_channels(club, actor=None)
     channel = ClubChannel.objects.filter(
