@@ -134,6 +134,9 @@
             <div class="club-panel-summary__meta">
                 {% if membership and membership.status == 'active' %}
                     <span class="tag is-link is-light club-membership-badge">You are {{ membership.get_local_role_display }}</span>
+                {% elif viewer_membership and viewer_membership.status == 'removed' %}
+                    <span class="tag is-danger is-light club-membership-badge">Removed from club</span>
+                    <p class="club-panel-summary__note muted-text">A coordinator or admin must restore your membership before you can join again.</p>
                 {% else %}
                     <form class="club-panel-summary__form" method="post" action="{% url 'clubs_events:club_join' club.pk %}">
                         {% csrf_token %}
@@ -340,6 +343,28 @@
                 {% if not online_members and not offline_members %}
                     <p class="muted-text">No members yet.</p>
                 {% endif %}
+            </div>
+        </div>
+        {% endif %}
+        {% if can_manage_members and removed_members %}
+        <div class="channel-group">
+            <div class="member-group-header">
+                <p class="eyebrow">Removed</p>
+                <span class="tag is-dark is-light">{{ removed_members|length }} awaiting restore</span>
+            </div>
+            <div class="member-list">
+                {% for removed in removed_members %}
+                    <div class="member-restore-row">
+                        <div class="member-restore-row__body">
+                            <strong>{{ removed.user.display_name }}</strong>
+                            <p class="muted-text">@{{ removed.user.username }}</p>
+                        </div>
+                        <form method="post" action="{% url 'clubs_events:club_member_restore' club.pk removed.user_id %}">
+                            {% csrf_token %}
+                            <button class="button is-small is-link is-light" type="submit">Restore</button>
+                        </form>
+                    </div>
+                {% endfor %}
             </div>
         </div>
         {% endif %}

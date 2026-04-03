@@ -37,6 +37,8 @@
                     <span class="tag is-link is-light">Coordinator access</span>
                 {% elif club.id in active_membership_ids %}
                     <span class="tag is-dark is-light">Member</span>
+                {% elif club.id in removed_membership_ids %}
+                    <span class="tag is-danger is-light">Removed</span>
                 {% endif %}
             </div>
             <div class="meta-row">
@@ -44,7 +46,7 @@
             </div>
             <div class="surface-card__actions">
                 <a class="button is-dark is-outlined" href="{% url 'clubs_events:club_detail' club.pk %}">View club</a>
-                {% if club.id not in active_membership_ids %}
+                {% if club.id not in active_membership_ids and club.id not in removed_membership_ids %}
                     <form method="post" action="{% url 'clubs_events:club_join' club.pk %}">
                         {% csrf_token %}
                         <button class="button is-link" type="submit">Join</button>

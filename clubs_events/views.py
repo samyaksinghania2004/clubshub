@@ -169,6 +169,11 @@ def club_list_view(request):
             local_role=ClubMembership.LocalRole.COORDINATOR,
         ).values_list("club_id", flat=True)
     )
+    removed_membership_ids = set(
+        request.user.club_memberships.filter(status=ClubMembership.Status.REMOVED).values_list(
+            "club_id", flat=True
+        )
+    )
     return render(
         request,
         "clubs_events/club_list.html",
@@ -177,6 +182,7 @@ def club_list_view(request):
             "q": q,
             "active_membership_ids": active_membership_ids,
             "manageable_club_ids": manageable_club_ids,
+            "removed_membership_ids": removed_membership_ids,
             "can_create_club": can_create_club(request.user),
         },
     )
@@ -266,9 +272,10 @@ def _get_club_channel_access(user, club, channel):
 @login_required
 def club_detail_view(request, pk, slug=None):
     club = get_object_or_404(Club, pk=pk)
-    membership = ClubMembership.objects.filter(
-        club=club, user=request.user, status=ClubMembership.Status.ACTIVE
-    ).first()
+    viewer_membership = ClubMembership.objects.filter(club=club, user=request.user).first()
+    membership = (
+        viewer_membership if viewer_membership and viewer_membership.status == ClubMembership.Status.ACTIVE else None
+    )
     members = (
         club.memberships.filter(status=ClubMembership.Status.ACTIVE)
         .select_related("user")
@@ -359,6 +366,7 @@ def club_detail_view(request, pk, slug=None):
     can_create_channel = is_global_admin(request.user) or is_coordinator
     can_manage_members = is_admin or is_coordinator
     show_members = is_member or is_admin
+    removed_members = []
     online_members = []
     offline_members = []
     if show_members:
@@ -369,6 +377,12 @@ def club_detail_view(request, pk, slug=None):
                 online_members.append(member)
             else:
                 offline_members.append(member)
+    if can_manage_members:
+        removed_members = (
+            club.memberships.filter(status=ClubMembership.Status.REMOVED)
+            .select_related("user")
+            .order_by("user__username")
+        )
 
     def can_access_channel(channel):
         if not channel.is_private:
@@ -426,6 +440,7 @@ def club_detail_view(request, pk, slug=None):
         {
             "club": club,
             "membership": membership,
+            "viewer_membership": viewer_membership,
             "members": members,
             "core_channels": core_channels,
             "event_channels": event_channels,
@@ -444,6 +459,7 @@ def club_detail_view(request, pk, slug=None):
             "show_members": show_members,
             "online_members": online_members,
             "offline_members": offline_members,
+            "removed_members": removed_members,
             "can_view_private_members": can_view_private_members,
             "can_add_private_members": can_add_private_members,
             "show_channel_menu": show_channel_menu,
@@ -512,6 +528,15 @@ def club_join_view(request, pk):
         },
     )
     if not created:
+        if membership.status == ClubMembership.Status.ACTIVE:
+            messages.info(request, f"You are already a member of {club.name}.")
+            return redirect("clubs_events:club_detail", pk=club.pk)
+        if membership.status == ClubMembership.Status.REMOVED:
+            messages.error(
+                request,
+                f"You were removed from {club.name}. A coordinator or admin must restore your membership.",
+            )
+            return redirect("clubs_events:club_detail", pk=club.pk)
         membership.status = ClubMembership.Status.ACTIVE
         membership.local_role = ClubMembership.LocalRole.MEMBER
         membership.left_at = None
@@ -706,6 +731,30 @@ def club_member_remove_view(request, pk, user_id):
         acting_user=request.user,
         target_user=target_membership.user,
         details={"club": str(club.id)},
+    )
+    return redirect("clubs_events:club_detail", pk=club.pk)
+
+
+@login_required
+def club_member_restore_view(request, pk, user_id):
+    club = get_object_or_404(Club, pk=pk)
+    if not can_manage_club(request.user, club):
+        return HttpResponseForbidden("Not allowed")
+    if request.method != "POST":
+        return redirect("clubs_events:club_detail", pk=club.pk)
+    target_membership = get_object_or_404(
+        ClubMembership,
+        club=club,
+        user_id=user_id,
+        status=ClubMembership.Status.REMOVED,
+    )
+    target_membership.status = ClubMembership.Status.ACTIVE
+    target_membership.local_role = ClubMembership.LocalRole.MEMBER
+    target_membership.left_at = None
+    target_membership.save(update_fields=["status", "local_role", "left_at", "updated_at"])
+    create_welcome_message(club, target_membership.user)
+    messages.success(
+        request, f"{target_membership.user.display_name} has been restored to the club."
     )
     return redirect("clubs_events:club_detail", pk=club.pk)
 

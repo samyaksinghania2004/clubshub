@@ -37,6 +37,27 @@ class ClubMembershipAndPermissionsTests(TestCase):
         self.assertEqual(membership.local_role, "member")
         self.assertEqual(membership.status, "active")
 
+    def test_removed_member_cannot_rejoin_until_restored(self):
+        self.client.login(username="s", password="Pass@123")
+        self.client.post(reverse("clubs_events:club_join", args=[self.club.pk]))
+
+        self.client.login(username="c", password="Pass@123")
+        self.client.post(reverse("clubs_events:club_member_remove", args=[self.club.pk, self.student.id]))
+
+        membership = ClubMembership.objects.get(club=self.club, user=self.student)
+        self.assertEqual(membership.status, ClubMembership.Status.REMOVED)
+
+        self.client.login(username="s", password="Pass@123")
+        self.client.post(reverse("clubs_events:club_join", args=[self.club.pk]))
+        membership.refresh_from_db()
+        self.assertEqual(membership.status, ClubMembership.Status.REMOVED)
+
+        self.client.login(username="c", password="Pass@123")
+        self.client.post(reverse("clubs_events:club_member_restore", args=[self.club.pk, self.student.id]))
+        membership.refresh_from_db()
+        self.assertEqual(membership.status, ClubMembership.Status.ACTIVE)
+        self.assertEqual(membership.local_role, ClubMembership.LocalRole.MEMBER)
+
     def test_only_admin_can_create_club(self):
         self.client.login(username="s", password="Pass@123")
         resp = self.client.post(reverse("clubs_events:club_create"), {"name": "X", "category": "y", "description": "z", "contact_email": "x@iitk.ac.in", "is_active": True})

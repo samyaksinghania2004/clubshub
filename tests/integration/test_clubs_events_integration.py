@@ -251,3 +251,51 @@ class ClubsEventsIntegrationTests(TestCase):
         self.assertContains(response, "Programming Club")
         self.assertContains(response, "members")
         self.assertNotContains(response, self.club.contact_email)
+
+    def test_removed_member_needs_manual_restore_before_rejoining(self):
+        self.client.force_login(self.coordinator)
+        remove_response = self.client.post(
+            reverse("clubs_events:club_member_remove", args=[self.club.pk, self.member.pk])
+        )
+        self.assertRedirects(
+            remove_response,
+            reverse("clubs_events:club_detail", args=[self.club.pk]),
+            fetch_redirect_response=False,
+        )
+
+        membership = ClubMembership.objects.get(club=self.club, user=self.member)
+        self.assertEqual(membership.status, ClubMembership.Status.REMOVED)
+
+        self.client.force_login(self.member)
+        join_response = self.client.post(reverse("clubs_events:club_join", args=[self.club.pk]))
+        self.assertRedirects(
+            join_response,
+            reverse("clubs_events:club_detail", args=[self.club.pk]),
+            fetch_redirect_response=False,
+        )
+        membership.refresh_from_db()
+        self.assertEqual(membership.status, ClubMembership.Status.REMOVED)
+
+        detail_response = self.client.get(reverse("clubs_events:club_detail", args=[self.club.pk]))
+        self.assertContains(detail_response, "Removed from club")
+        self.assertNotContains(detail_response, ">Join club<", html=False)
+        list_response = self.client.get(reverse("clubs_events:club_list"))
+        self.assertContains(list_response, "Removed")
+        self.assertNotContains(list_response, ">Join<", html=False)
+
+        self.client.force_login(self.coordinator)
+        manager_response = self.client.get(reverse("clubs_events:club_detail", args=[self.club.pk]))
+        self.assertContains(
+            manager_response,
+            reverse("clubs_events:club_member_restore", args=[self.club.pk, self.member.pk]),
+        )
+        restore_response = self.client.post(
+            reverse("clubs_events:club_member_restore", args=[self.club.pk, self.member.pk])
+        )
+        self.assertRedirects(
+            restore_response,
+            reverse("clubs_events:club_detail", args=[self.club.pk]),
+            fetch_redirect_response=False,
+        )
+        membership.refresh_from_db()
+        self.assertEqual(membership.status, ClubMembership.Status.ACTIVE)

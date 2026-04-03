@@ -46,6 +46,11 @@ urlpatterns = [
         views.club_member_remove_view,
         name="club_member_remove",
     ),
+    path(
+        "<uuid:pk>/members/<int:user_id>/restore/",
+        views.club_member_restore_view,
+        name="club_member_restore",
+    ),
     path("<uuid:pk>/members/<int:user_id>/assign-secretary/", views.assign_secretary_view, name="assign_secretary"),
     path("<uuid:pk>/members/<int:user_id>/revoke-secretary/", views.revoke_secretary_view, name="revoke_secretary"),
     path("events/create/", views.event_create_view, name="event_create"),
