@@ -170,7 +170,7 @@ class AccountsFlowIntegrationTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Please enter a valid IITK email address.")
-        self.assertContains(response, "Finish OTP login")
+        self.assertContains(response, "OTP login")
         self.assertContains(response, f'action="{reverse("accounts:request_login_otp")}"')
         self.assertContains(response, reverse("accounts:login"))
 

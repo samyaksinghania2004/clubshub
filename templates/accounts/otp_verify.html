@@ -4,33 +4,13 @@
 
 {% block content %}
 <section class="section auth-section">
-  <div class="auth-shell">
-    <div class="auth-panel auth-panel--intro">
-      <p class="eyebrow">One-time code sign in</p>
-      <h1 class="auth-title">Verify the code sent to your IITK email.</h1>
-      <p class="auth-copy">
-        This flow is useful when you do not want to use your password on the current device. Request a fresh code below if you need one.
-      </p>
-
-      <ul class="auth-feature-list">
-        <li>Enter the latest unused 6-digit code linked to your verified IITK account.</li>
-        <li>Requesting a fresh code keeps the OTP flow separate from the main password login page.</li>
-        <li>Once verification succeeds, ClubsHub signs you in normally and returns you to the app.</li>
-      </ul>
-
-      <p class="auth-footer auth-footer--inline">
-        Prefer your password instead? <a href="{% url 'accounts:login' %}{% if next %}?next={{ next|urlencode }}{% endif %}">Back to password login</a>.
-      </p>
-    </div>
-
-    <div class="auth-column">
+  <div class="auth-shell auth-shell--compact">
+    <div class="auth-column auth-column--single">
       <div class="auth-panel auth-panel--form auth-panel--primary">
         <div class="auth-card-header">
           <div>
-            <p class="eyebrow">Verify code</p>
-            <h2 class="auth-card-title">Finish OTP login</h2>
+            <h1 class="auth-card-title auth-card-title--hero">OTP login</h1>
           </div>
-          <p class="auth-note">Enter the code exactly as it appears in the email.</p>
         </div>
 
         <form class="auth-form" method="post" action="{% url 'accounts:otp_verify' %}">
@@ -65,13 +45,11 @@
         </form>
       </div>
 
-      <div class="auth-panel auth-panel--secondary">
+      <div class="auth-panel auth-panel--secondary auth-panel--compact">
         <div class="auth-card-header">
           <div>
-            <p class="eyebrow">Need a fresh code?</p>
-            <h2 class="auth-card-title">Request another OTP</h2>
+            <h2 class="auth-card-title">Request a new code</h2>
           </div>
-          <p class="auth-note">We will send a new 6-digit code to the registered IITK email if an eligible account exists.</p>
         </div>
 
         <form class="auth-form auth-form--compact" method="post" action="{% url 'accounts:request_login_otp' %}">
@@ -105,6 +83,10 @@
           </div>
         </form>
       </div>
+
+      <p class="auth-footer">
+        Use password instead? <a href="{% url 'accounts:login' %}{% if next %}?next={{ next|urlencode }}{% endif %}">Back to login</a>.
+      </p>
     </div>
   </div>
 </section>
