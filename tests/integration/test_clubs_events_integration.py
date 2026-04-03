@@ -217,3 +217,12 @@ class ClubsEventsIntegrationTests(TestCase):
         self.assertContains(response, "Registration")
         self.assertContains(response, 'data-modal-target="announcement-modal-')
         self.assertContains(response, "Open announcement")
+
+    def test_club_detail_marks_chat_workspace_for_scroll_locked_layout(self):
+        self.client.force_login(self.member)
+
+        response = self.client.get(reverse("clubs_events:club_detail", args=[self.club.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "data-chat-workspace")
+        self.assertContains(response, 'data-live-chat="club"')

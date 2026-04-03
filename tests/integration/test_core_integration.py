@@ -53,6 +53,11 @@ class CoreFlowIntegrationTests(TestCase):
         self.assertEqual(payload["item"]["sender_name"], self.sender.display_name)
         self.assertIn("Hello from the integration suite", payload["item"]["body_html"])
 
+        thread_response = self.client.get(reverse("core:inbox_thread", args=[thread.pk]))
+        self.assertEqual(thread_response.status_code, 200)
+        self.assertContains(thread_response, "data-chat-workspace")
+        self.assertContains(thread_response, 'data-dm-thread="')
+
         messages_response = self.client.get(reverse("core:inbox_messages", args=[thread.pk]))
         self.assertEqual(messages_response.status_code, 200)
         self.assertEqual(len(messages_response.json()["items"]), 1)
@@ -82,4 +87,3 @@ class CoreFlowIntegrationTests(TestCase):
 
         notification.refresh_from_db()
         self.assertTrue(notification.is_read)
-

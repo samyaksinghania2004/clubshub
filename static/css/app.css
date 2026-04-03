@@ -282,6 +282,7 @@ html[data-theme="light"] .app-sidebar {
 
 .app-main {
   padding: var(--app-main-padding);
+  min-height: 0;
 }
 
 .flash-stack {
@@ -828,6 +829,7 @@ body.modal-open {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
   gap: 1rem;
+  align-items: start;
 }
 
 .club-chat-layout {
@@ -848,6 +850,7 @@ body.modal-open {
   padding: 1.25rem;
   display: grid;
   gap: 1rem;
+  min-height: 0;
 }
 
 .dm-list-header {
@@ -872,6 +875,7 @@ body.modal-open {
   gap: 0.6rem;
   max-height: 60vh;
   overflow: auto;
+  overscroll-behavior: contain;
 }
 
 .dm-thread {
@@ -943,6 +947,7 @@ body.modal-open {
 
 .dm-chat-panel {
   padding: 1.25rem;
+  min-height: 0;
 }
 
 .dm-chat-header {
@@ -973,6 +978,12 @@ body.modal-open {
 .club-chat-panel,
 .club-channel-panel {
   padding: 1.25rem;
+}
+
+.club-chat-panel,
+.club-channel-panel,
+.room-sidepanel {
+  min-height: 0;
 }
 
 .club-chat-header {
@@ -1059,7 +1070,7 @@ body.modal-open {
 
 .room-stream-card {
   padding: 0;
-  overflow: visible;
+  overflow: hidden;
 }
 
 .room-announcements,
@@ -1072,37 +1083,16 @@ body.modal-open {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding-bottom: calc(1rem + var(--composer-space));
+  padding-bottom: 1rem;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 .composer-card--sticky {
-  position: fixed;
-  bottom: 1rem;
-  left: calc(var(--sidebar-width) + var(--app-main-padding));
-  right: var(--app-main-padding);
-  z-index: 25;
-  box-shadow: var(--shadow);
-}
-
-.dm-layout .composer-card--sticky {
-  left: calc(var(--sidebar-width) + var(--app-main-padding) + var(--dm-list-width) + var(--layout-gap));
-  right: var(--app-main-padding);
-}
-
-.room-layout .composer-card--sticky {
-  right: calc(var(--app-main-padding) + var(--room-panel-width) + var(--layout-gap));
-}
-
-.club-chat-layout .composer-card--sticky {
-  right: calc(var(--app-main-padding) + var(--club-panel-width) + var(--layout-gap));
-}
-
-.app-shell.is-sidebar-collapsed .composer-card--sticky {
-  left: var(--app-main-padding);
-}
-
-.app-shell.is-sidebar-collapsed .dm-layout .composer-card--sticky {
-  left: calc(var(--app-main-padding) + var(--dm-list-width) + var(--layout-gap));
+  position: static;
+  inset: auto;
+  z-index: auto;
+  box-shadow: none;
 }
 
 .composer-form {
@@ -1156,6 +1146,50 @@ body.modal-open {
 
 .dm-composer {
   background: var(--bg-elevated);
+}
+
+@media (min-width: 1025px) {
+  [data-chat-workspace] {
+    height: var(--chat-workspace-height, auto);
+    min-height: 420px;
+    align-items: stretch;
+    overflow: hidden;
+  }
+
+  [data-chat-workspace] > * {
+    min-height: 0;
+  }
+
+  .room-stream-card,
+  .club-chat-panel,
+  .dm-chat-panel,
+  .club-channel-panel,
+  .dm-list-panel,
+  .room-sidepanel {
+    height: 100%;
+  }
+
+  .room-stream-card,
+  .club-chat-panel,
+  .dm-chat-panel {
+    min-height: 0;
+  }
+
+  .club-channel-panel,
+  .dm-list-panel,
+  .room-sidepanel {
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+
+  .dm-list-panel {
+    grid-template-rows: auto auto minmax(0, 1fr);
+  }
+
+  .dm-thread-list {
+    max-height: none;
+    min-height: 0;
+  }
 }
 
 .highlight-message-block {

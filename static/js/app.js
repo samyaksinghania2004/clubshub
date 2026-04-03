@@ -5,6 +5,7 @@
   const sidebarBackdrop = document.querySelector('[data-sidebar-backdrop]');
   const appShell = document.querySelector('.app-shell');
   const desktopSidebarQuery = window.matchMedia('(min-width: 1025px)');
+  const desktopChatWorkspaceQuery = window.matchMedia('(min-width: 1025px)');
   const themeToggle = document.querySelector('[data-theme-toggle]');
   const themeIcon = document.querySelector('[data-theme-icon]');
   const notificationsButton = document.querySelector('[data-notifications-button]');
@@ -18,6 +19,8 @@
   const sidebarStateKey = 'clubshub-sidebar-collapsed';
   const seenNotificationsKey = 'clubshub-seen-notification-ids';
   const liveMessagePollIntervalMs = 4000;
+  const chatWorkspaceLayouts = Array.from(document.querySelectorAll('[data-chat-workspace]'));
+  const latestMessageStreams = new Set();
   let deferredInstallPrompt = null;
 
   const showToast = (title, body) => {
@@ -77,10 +80,60 @@
     return navigationEntry?.type === 'back_forward';
   };
 
+  const syncChatWorkspaceHeights = () => {
+    if (!chatWorkspaceLayouts.length) return;
+    if (!desktopChatWorkspaceQuery.matches) {
+      chatWorkspaceLayouts.forEach((layout) => {
+        layout.style.removeProperty('--chat-workspace-height');
+      });
+      return;
+    }
+    const viewportHeight = window.visualViewport?.height || window.innerHeight;
+    chatWorkspaceLayouts.forEach((layout) => {
+      const rect = layout.getBoundingClientRect();
+      const availableHeight = Math.max(Math.floor(viewportHeight - rect.top - 8), 420);
+      layout.style.setProperty('--chat-workspace-height', `${availableHeight}px`);
+    });
+  };
+
+  const syncLatestMessageStreams = () => {
+    if (document.querySelector('.chat-message.is-focused')) return;
+    latestMessageStreams.forEach((messageStream) => {
+      if (!messageStream || messageStream.dataset.latestInitialized === 'true') return;
+      messageStream.dataset.latestInitialized = 'true';
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          messageStream.scrollTop = messageStream.scrollHeight;
+        });
+      });
+    });
+  };
+
+  const registerLatestMessageStream = (messageStream) => {
+    if (!messageStream) return;
+    latestMessageStreams.add(messageStream);
+  };
+
   window.addEventListener('pageshow', (event) => {
     if (!isAuthSensitivePage || !wasRestoredFromHistory(event)) return;
     window.location.reload();
   });
+
+  syncChatWorkspaceHeights();
+  window.addEventListener('load', () => {
+    syncChatWorkspaceHeights();
+    syncLatestMessageStreams();
+  });
+  window.addEventListener('resize', syncChatWorkspaceHeights);
+  if (window.visualViewport?.addEventListener) {
+    window.visualViewport.addEventListener('resize', syncChatWorkspaceHeights);
+  }
+  if (desktopChatWorkspaceQuery.addEventListener) {
+    desktopChatWorkspaceQuery.addEventListener('change', () => {
+      syncChatWorkspaceHeights();
+      syncLatestMessageStreams();
+    });
+  }
 
   const loadTheme = () => {
     const saved = localStorage.getItem(themeKey);
@@ -598,7 +651,9 @@
         schedulePoll();
       }, liveMessagePollIntervalMs);
     };
+    registerLatestMessageStream(messageStream);
     schedulePoll();
+    syncLatestMessageStreams();
 
     if (dmForm && sendUrl) {
       dmForm.addEventListener('submit', async (event) => {
@@ -813,7 +868,9 @@
         schedulePoll();
       }, liveMessagePollIntervalMs);
     };
+    registerLatestMessageStream(messageStream);
     schedulePoll();
+    syncLatestMessageStreams();
 
     if (chatForm && sendUrl) {
       chatForm.addEventListener('submit', async (event) => {
