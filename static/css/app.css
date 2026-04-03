@@ -97,6 +97,64 @@ select:focus {
   border-radius: 16px !important;
 }
 
+.tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  min-height: 2rem;
+  padding: 0.38rem 0.8rem;
+  border: 1px solid transparent !important;
+  border-radius: 999px !important;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: 0.01em;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42);
+}
+
+.tag.is-dark.is-light,
+.tag.is-light {
+  background: linear-gradient(180deg, rgba(241, 245, 249, 0.98), rgba(226, 232, 240, 0.94)) !important;
+  border-color: rgba(148, 163, 184, 0.38) !important;
+  color: #334155 !important;
+}
+
+.tag.is-link.is-light {
+  background: linear-gradient(180deg, rgba(219, 234, 254, 0.98), rgba(191, 219, 254, 0.9)) !important;
+  border-color: rgba(96, 165, 250, 0.4) !important;
+  color: #1d4ed8 !important;
+}
+
+.tag.is-danger.is-light {
+  background: linear-gradient(180deg, rgba(254, 242, 242, 0.98), rgba(254, 226, 226, 0.92)) !important;
+  border-color: rgba(248, 113, 113, 0.32) !important;
+  color: #b91c1c !important;
+}
+
+html[data-theme="dark"] .tag {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+html[data-theme="dark"] .tag.is-dark.is-light,
+html[data-theme="dark"] .tag.is-light {
+  background: linear-gradient(180deg, rgba(148, 163, 184, 0.2), rgba(100, 116, 139, 0.14)) !important;
+  border-color: rgba(148, 163, 184, 0.28) !important;
+  color: #f8fafc !important;
+}
+
+html[data-theme="dark"] .tag.is-link.is-light {
+  background: linear-gradient(180deg, rgba(59, 130, 246, 0.24), rgba(37, 99, 235, 0.16)) !important;
+  border-color: rgba(96, 165, 250, 0.32) !important;
+  color: #dbeafe !important;
+}
+
+html[data-theme="dark"] .tag.is-danger.is-light {
+  background: linear-gradient(180deg, rgba(248, 113, 113, 0.22), rgba(239, 68, 68, 0.14)) !important;
+  border-color: rgba(248, 113, 113, 0.28) !important;
+  color: #fecaca !important;
+}
+
 .app-shell {
   min-height: 100vh;
 }
@@ -2775,11 +2833,7 @@ html[data-theme="light"] .auth-feature-list li {
     gap: 0.55rem;
   }
 
-  .club-membership-badge,
-  .badge-pill,
-  .tag.is-dark.is-light,
-  .tag.is-link.is-light,
-  .tag.is-light {
+  .badge-pill {
     background: rgba(47, 116, 255, 0.12) !important;
     color: var(--primary-strong) !important;
     border: 1px solid rgba(47, 116, 255, 0.2);
