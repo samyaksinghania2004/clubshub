@@ -190,35 +190,74 @@
                 {% if online_members %}
                     <p class="member-group-label">Online</p>
                     {% for m in online_members %}
-                        <div class="member-row">
-                            <div class="member-identity">
-                                <span class="presence-dot is-online" aria-hidden="true"></span>
-                                <div>
-                                    <strong>{{ m.user.display_name }}</strong>
-                                    <p class="muted-text">{{ m.user.email }}</p>
-                                </div>
+                        <button
+                            type="button"
+                            class="member-card-button"
+                            data-modal-target="member-modal-{{ m.user_id }}"
+                        >
+                            <span class="presence-dot is-online" aria-hidden="true"></span>
+                            <div class="member-card-button__body">
+                                <strong>{{ m.user.display_name }}</strong>
                             </div>
-                            <div class="member-actions">
-                                <span class="tag is-link is-light">{{ m.get_local_role_display }}</span>
-                                {% if can_manage_members and m.user_id != request.user.id %}
-                                    <details class="action-menu action-menu--compact">
-                                        <summary class="action-menu__toggle button is-dark is-outlined" aria-label="Member options">
-                                            ...
-                                        </summary>
-                                        <div class="action-menu__panel">
+                            <span class="member-role-badge" aria-label="{{ m.get_local_role_display }}">
+                                {% if m.local_role == 'coordinator' %}👑{% elif m.local_role == 'secretary' %}📝{% else %}👤{% endif %}
+                            </span>
+                        </button>
+                        <div class="modal is-hidden" id="member-modal-{{ m.user_id }}" data-modal>
+                            <div class="modal__backdrop" data-modal-close></div>
+                            <div class="modal__panel">
+                                <div class="modal__header">
+                                    <div class="member-modal__identity">
+                                        <span class="presence-dot is-online" aria-hidden="true"></span>
+                                        <div>
+                                            <p class="eyebrow">Club member</p>
+                                            <h3>{{ m.user.display_name }}</h3>
+                                            <p class="muted-text">
+                                                {% if m.local_role == 'coordinator' %}👑{% elif m.local_role == 'secretary' %}📝{% else %}👤{% endif %}
+                                                {{ m.get_local_role_display }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button type="button" class="modal__close button is-dark is-outlined" data-modal-close>
+                                        Close
+                                    </button>
+                                </div>
+                                <div class="modal__body stack-gap">
+                                    <div class="member-modal__summary">
+                                        <div class="member-modal__summary-item">
+                                            <p class="eyebrow">Email</p>
+                                            <p class="member-modal__value">{{ m.user.email }}</p>
+                                        </div>
+                                        <div class="member-modal__summary-item">
+                                            <p class="eyebrow">Role</p>
+                                            <p class="member-modal__value">
+                                                {% if m.local_role == 'coordinator' %}👑{% elif m.local_role == 'secretary' %}📝{% else %}👤{% endif %}
+                                                {{ m.get_local_role_display }}
+                                            </p>
+                                        </div>
+                                        <div class="member-modal__summary-item">
+                                            <p class="eyebrow">Status</p>
+                                            <p class="member-modal__value">Online</p>
+                                        </div>
+                                    </div>
+                                    <div class="modal__actions">
+                                        {% if m.user_id != request.user.id %}
+                                            <a class="button is-link" href="{% url 'core:inbox_user' m.user_id %}">Direct message</a>
+                                        {% endif %}
+                                        {% if can_manage_members and m.user_id != request.user.id %}
                                             {% if m.local_role == 'member' %}
-                                                <a class="action-menu__item" href="{% url 'clubs_events:assign_secretary' club.pk m.user_id %}">Make secretary</a>
+                                                <a class="button is-dark is-outlined" href="{% url 'clubs_events:assign_secretary' club.pk m.user_id %}">Make secretary</a>
                                             {% endif %}
                                             {% if m.local_role == 'secretary' %}
-                                                <a class="action-menu__item" href="{% url 'clubs_events:revoke_secretary' club.pk m.user_id %}">Revoke secretary</a>
+                                                <a class="button is-dark is-outlined" href="{% url 'clubs_events:revoke_secretary' club.pk m.user_id %}">Revoke secretary</a>
                                             {% endif %}
                                             <form method="post" action="{% url 'clubs_events:club_member_remove' club.pk m.user_id %}" data-confirm="Remove {{ m.user.display_name }} from {{ club.name }}?">
                                                 {% csrf_token %}
-                                                <button class="action-menu__item is-danger" type="submit">Remove from club</button>
+                                                <button class="button is-danger is-light" type="submit">Remove from club</button>
                                             </form>
-                                        </div>
-                                    </details>
-                                {% endif %}
+                                        {% endif %}
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     {% endfor %}
@@ -226,35 +265,74 @@
                 {% if offline_members %}
                     <p class="member-group-label">Offline</p>
                     {% for m in offline_members %}
-                        <div class="member-row">
-                            <div class="member-identity">
-                                <span class="presence-dot is-offline" aria-hidden="true"></span>
-                                <div>
-                                    <strong>{{ m.user.display_name }}</strong>
-                                    <p class="muted-text">{{ m.user.email }}</p>
-                                </div>
+                        <button
+                            type="button"
+                            class="member-card-button"
+                            data-modal-target="member-modal-{{ m.user_id }}"
+                        >
+                            <span class="presence-dot is-offline" aria-hidden="true"></span>
+                            <div class="member-card-button__body">
+                                <strong>{{ m.user.display_name }}</strong>
                             </div>
-                            <div class="member-actions">
-                                <span class="tag is-link is-light">{{ m.get_local_role_display }}</span>
-                                {% if can_manage_members and m.user_id != request.user.id %}
-                                    <details class="action-menu action-menu--compact">
-                                        <summary class="action-menu__toggle button is-dark is-outlined" aria-label="Member options">
-                                            ...
-                                        </summary>
-                                        <div class="action-menu__panel">
+                            <span class="member-role-badge" aria-label="{{ m.get_local_role_display }}">
+                                {% if m.local_role == 'coordinator' %}👑{% elif m.local_role == 'secretary' %}📝{% else %}👤{% endif %}
+                            </span>
+                        </button>
+                        <div class="modal is-hidden" id="member-modal-{{ m.user_id }}" data-modal>
+                            <div class="modal__backdrop" data-modal-close></div>
+                            <div class="modal__panel">
+                                <div class="modal__header">
+                                    <div class="member-modal__identity">
+                                        <span class="presence-dot is-offline" aria-hidden="true"></span>
+                                        <div>
+                                            <p class="eyebrow">Club member</p>
+                                            <h3>{{ m.user.display_name }}</h3>
+                                            <p class="muted-text">
+                                                {% if m.local_role == 'coordinator' %}👑{% elif m.local_role == 'secretary' %}📝{% else %}👤{% endif %}
+                                                {{ m.get_local_role_display }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button type="button" class="modal__close button is-dark is-outlined" data-modal-close>
+                                        Close
+                                    </button>
+                                </div>
+                                <div class="modal__body stack-gap">
+                                    <div class="member-modal__summary">
+                                        <div class="member-modal__summary-item">
+                                            <p class="eyebrow">Email</p>
+                                            <p class="member-modal__value">{{ m.user.email }}</p>
+                                        </div>
+                                        <div class="member-modal__summary-item">
+                                            <p class="eyebrow">Role</p>
+                                            <p class="member-modal__value">
+                                                {% if m.local_role == 'coordinator' %}👑{% elif m.local_role == 'secretary' %}📝{% else %}👤{% endif %}
+                                                {{ m.get_local_role_display }}
+                                            </p>
+                                        </div>
+                                        <div class="member-modal__summary-item">
+                                            <p class="eyebrow">Status</p>
+                                            <p class="member-modal__value">Offline</p>
+                                        </div>
+                                    </div>
+                                    <div class="modal__actions">
+                                        {% if m.user_id != request.user.id %}
+                                            <a class="button is-link" href="{% url 'core:inbox_user' m.user_id %}">Direct message</a>
+                                        {% endif %}
+                                        {% if can_manage_members and m.user_id != request.user.id %}
                                             {% if m.local_role == 'member' %}
-                                                <a class="action-menu__item" href="{% url 'clubs_events:assign_secretary' club.pk m.user_id %}">Make secretary</a>
+                                                <a class="button is-dark is-outlined" href="{% url 'clubs_events:assign_secretary' club.pk m.user_id %}">Make secretary</a>
                                             {% endif %}
                                             {% if m.local_role == 'secretary' %}
-                                                <a class="action-menu__item" href="{% url 'clubs_events:revoke_secretary' club.pk m.user_id %}">Revoke secretary</a>
+                                                <a class="button is-dark is-outlined" href="{% url 'clubs_events:revoke_secretary' club.pk m.user_id %}">Revoke secretary</a>
                                             {% endif %}
                                             <form method="post" action="{% url 'clubs_events:club_member_remove' club.pk m.user_id %}" data-confirm="Remove {{ m.user.display_name }} from {{ club.name }}?">
                                                 {% csrf_token %}
-                                                <button class="action-menu__item is-danger" type="submit">Remove from club</button>
+                                                <button class="button is-danger is-light" type="submit">Remove from club</button>
                                             </form>
-                                        </div>
-                                    </details>
-                                {% endif %}
+                                        {% endif %}
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     {% endfor %}

@@ -212,6 +212,16 @@ def _get_or_create_dm_thread(user, recipient):
     return thread
 
 
+@login_required
+def inbox_user_view(request, user_id):
+    User = get_user_model()
+    recipient = get_object_or_404(User, pk=user_id, is_active=True)
+    if recipient.id == request.user.id:
+        return redirect("core:inbox")
+    thread = _get_or_create_dm_thread(request.user, recipient)
+    return redirect("core:inbox_thread", thread_pk=thread.pk)
+
+
 def _get_dm_block_state(user, other_user):
     blocked_by_me = DirectMessageBlock.objects.filter(
         blocker=user, blocked=other_user

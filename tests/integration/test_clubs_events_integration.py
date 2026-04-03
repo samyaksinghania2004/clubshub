@@ -228,3 +228,16 @@ class ClubsEventsIntegrationTests(TestCase):
         self.assertContains(response, 'data-live-chat="club"')
         self.assertContains(response, "club-panel-summary__title")
         self.assertNotContains(response, "page-hero page-hero--club")
+
+    def test_club_detail_uses_compact_member_cards_with_dm_modal(self):
+        self.client.force_login(self.member)
+
+        response = self.client.get(reverse("clubs_events:club_detail", args=[self.club.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'class="member-card-button"', count=2)
+        self.assertContains(response, f'data-modal-target="member-modal-{self.coordinator.pk}"')
+        self.assertContains(response, 'id="member-modal-')
+        self.assertContains(response, "member-role-badge")
+        self.assertContains(response, reverse("core:inbox_user", args=[self.coordinator.pk]))
+        self.assertNotContains(response, reverse("core:inbox_user", args=[self.member.pk]))

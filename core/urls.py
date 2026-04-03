@@ -21,6 +21,7 @@ urlpatterns = [
     ),
     path("search/", views.search_view, name="search"),
     path("inbox/", views.inbox_view, name="inbox"),
+    path("inbox/user/<int:user_id>/", views.inbox_user_view, name="inbox_user"),
     path("inbox/<uuid:thread_pk>/", views.inbox_thread_view, name="inbox_thread"),
     path(
         "inbox/<uuid:thread_pk>/block/<str:action>/",

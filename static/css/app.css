@@ -746,6 +746,57 @@ body.modal-open {
   min-width: 0;
 }
 
+.member-card-button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--bg-muted);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.member-card-button:hover,
+.member-card-button:focus-visible {
+  border-color: rgba(47, 116, 255, 0.42);
+  box-shadow: 0 12px 26px rgba(47, 116, 255, 0.12);
+  transform: translateY(-1px);
+}
+
+.member-card-button:focus-visible {
+  outline: 3px solid rgba(47, 116, 255, 0.18);
+  outline-offset: 2px;
+}
+
+.member-card-button__body {
+  min-width: 0;
+  flex: 1;
+}
+
+.member-card-button__body strong {
+  display: block;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.member-role-badge {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(47, 116, 255, 0.14);
+  border: 1px solid rgba(47, 116, 255, 0.16);
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
 .member-row {
   display: flex;
   flex-wrap: wrap;
@@ -788,6 +839,37 @@ body.modal-open {
 
 .member-row .member-actions {
   margin-left: auto;
+}
+
+.member-modal__identity {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.member-modal__summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.member-modal__summary-item {
+  padding: 0.85rem 0.95rem;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--bg-muted);
+  display: grid;
+  gap: 0.3rem;
+}
+
+.member-modal__summary-item p {
+  margin: 0;
+}
+
+.member-modal__value {
+  color: var(--text);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 .presence-dot {
@@ -1888,6 +1970,10 @@ html[data-theme="light"] .auth-feature-list li {
 
   .page-hero--club .page-subtitle {
     max-width: 28ch;
+  }
+
+  .member-modal__summary {
+    grid-template-columns: 1fr;
   }
 
   .event-meta-grid {

@@ -62,6 +62,28 @@ class CoreFlowIntegrationTests(TestCase):
         self.assertEqual(messages_response.status_code, 200)
         self.assertEqual(len(messages_response.json()["items"]), 1)
 
+    def test_inbox_user_shortcut_creates_or_reuses_thread(self):
+        self.client.force_login(self.sender)
+
+        shortcut_response = self.client.get(
+            reverse("core:inbox_user", args=[self.recipient.pk])
+        )
+
+        thread = DirectMessageThread.objects.get()
+        self.assertRedirects(
+            shortcut_response,
+            reverse("core:inbox_thread", args=[thread.pk]),
+            fetch_redirect_response=False,
+        )
+
+        second_response = self.client.get(reverse("core:inbox_user", args=[self.recipient.pk]))
+        self.assertRedirects(
+            second_response,
+            reverse("core:inbox_thread", args=[thread.pk]),
+            fetch_redirect_response=False,
+        )
+        self.assertEqual(DirectMessageThread.objects.count(), 1)
+
     def test_notifications_feed_and_open_mark_notification_read(self):
         notification = Notification.objects.create(
             user=self.sender,
