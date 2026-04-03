@@ -1,0 +1,657 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{graphicx}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{longtable}
+\usepackage{tabularx}
+\usepackage{float}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{caption}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!50!black,
+  urlcolor=blue!50!black
+}
+
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{ClubsHub User Manual}
+\rhead{\thepage}
+\setlength{\headheight}{14pt}
+
+\titleformat{\section}{\large\bfseries}{\thesection}{0.75em}{}
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{0.75em}{}
+
+\newcommand{\productname}{ClubsHub}
+\newcommand{\manualdate}{April 3, 2026}
+
+\newcommand{\shot}[3]{
+  \begin{figure}[H]
+    \centering
+    \IfFileExists{#1}{
+      \includegraphics[width=0.92\linewidth]{#1}
+    }{
+      \fbox{
+        \parbox[c][0.28\textheight][c]{0.88\linewidth}{
+          \centering
+          \textbf{Screenshot placeholder}\\[0.6em]
+          File: \texttt{#1}\\[0.6em]
+          Capture note: #3
+        }
+      }
+    }
+    \caption{#2}
+  \end{figure}
+}
+
+\begin{document}
+
+\begin{titlepage}
+  \centering
+  \vspace*{2cm}
+  {\Huge \bfseries ClubsHub User Manual\par}
+  \vspace{0.75cm}
+  {\Large IIT Kanpur Clubs, Events, Rooms, and Messaging Platform\par}
+  \vspace{1.5cm}
+  {\large Version based on the current repository implementation\par}
+  \vspace{0.25cm}
+  {\large \manualdate\par}
+  \vfill
+  \begin{minipage}{0.82\textwidth}
+    \centering
+    This manual is written for end users, club coordinators, club secretaries, and administrators using the current web application. It is intended to be uploaded to Overleaf and compiled into the final project PDF.
+  \end{minipage}
+  \vfill
+  {\large Prepared for the ClubsHub project\par}
+\end{titlepage}
+
+\tableofcontents
+\clearpage
+
+\section{Introduction}
+
+\productname{} is a web application for IIT Kanpur clubs, events, open discussion rooms, notifications, and direct messages. The system is accessible from both desktop and mobile browsers, and it also supports installable Progressive Web App behavior on supported devices.
+
+This manual focuses on actual user workflows available in the current implementation:
+
+\begin{itemize}[leftmargin=1.5em]
+  \item account creation and login
+  \item event discovery and registration
+  \item club membership and club channel usage
+  \item anonymous open-room participation
+  \item direct messages
+  \item notifications, theme toggle, and mobile usage
+  \item coordinator and administrator actions that affect normal users
+\end{itemize}
+
+\subsection{Supported roles}
+
+The system currently uses the following roles:
+
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Student}: normal end user
+  \item \textbf{Club member}: student with active membership in a club
+  \item \textbf{Club secretary}: club-level manager with event and channel responsibilities
+  \item \textbf{Club coordinator}: club-level manager with stronger membership and channel control
+  \item \textbf{Institute admin / system admin}: elevated administrative roles
+\end{itemize}
+
+The interface shown to a user depends on the account role and the user's status inside each club or room.
+
+\section{Getting Started}
+
+\subsection{Opening the application}
+
+Open the ClubsHub URL in a browser. After the page loads, the shared application shell appears:
+
+\begin{itemize}[leftmargin=1.5em]
+  \item left sidebar for main navigation
+  \item top search bar for clubs, events, and open rooms
+  \item notifications button
+  \item theme toggle
+  \item user/profile shortcut
+\end{itemize}
+
+\subsection{Main navigation}
+
+The current navigation options are:
+
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Events}: browse upcoming events
+  \item \textbf{Clubs}: browse clubs and open club pages
+  \item \textbf{Open rooms}: browse discussion rooms
+  \item \textbf{My activity}: profile-style summary of memberships, registrations, and room handles
+  \item \textbf{Inbox}: direct messages
+\end{itemize}
+
+On mobile devices, the left sidebar opens as a drawer from the menu button.
+
+\section{Account Access and Authentication}
+
+\subsection{Creating an account}
+
+New users must create an account using an \texttt{@iitk.ac.in} email address.
+
+\begin{enumerate}[leftmargin=1.8em]
+  \item Open the sign-up page.
+  \item Enter username, IITK email address, and password.
+  \item Submit the form.
+  \item Open the verification email.
+  \item Click the verification link to activate the account.
+\end{enumerate}
+
+If the user does not verify the account in time, the system provides a resend-verification flow. If the verification email was not expected, the user can report the signup from the email itself.
+
+\subsection{Password login}
+
+Users can sign in with either:
+
+\begin{itemize}[leftmargin=1.5em]
+  \item username and password, or
+  \item IITK email and password
+\end{itemize}
+
+Only verified accounts can complete password login.
+
+\shot{screenshots/login_desktop.png}
+{Desktop password login page}
+{Capture the main login page on desktop showing the password form, the OTP button, and the theme toggle in the header.}
+
+\subsection{OTP login}
+
+Verified users can also log in using a one-time code sent by email.
+
+\begin{enumerate}[leftmargin=1.8em]
+  \item Open the login page.
+  \item Click \textbf{Use OTP instead}.
+  \item Enter the IITK email address.
+  \item Submit the request.
+  \item Open the email and note the 6-digit code.
+  \item Enter the code on the OTP verification page.
+\end{enumerate}
+
+\shot{screenshots/login_otp_mobile.png}
+{Mobile OTP login flow}
+{Capture the OTP verification page on mobile after a code has been requested. Show the email field, code field, and the request-another-code section if visible.}
+
+\subsection{Forgot password}
+
+The password reset flow is available from the login page.
+
+\begin{enumerate}[leftmargin=1.8em]
+  \item Click \textbf{Forgot password?}
+  \item Enter the email address associated with the account.
+  \item Open the password reset email.
+  \item Follow the link and set a new password.
+\end{enumerate}
+
+\subsection{Verification pending state}
+
+Immediately after account creation, the system sends the user to a pending-verification page. This page reminds the user to check email and provides a resend path.
+
+\shot{screenshots/signup_pending.png}
+{Signup pending page}
+{Capture the pending-verification page shown immediately after account creation.}
+
+\section{Dashboard Layout and Common Controls}
+
+\subsection{Top bar}
+
+The top bar contains the most frequently used controls:
+
+\begin{itemize}[leftmargin=1.5em]
+  \item global search
+  \item current user button
+  \item logout
+  \item notifications
+  \item theme toggle
+\end{itemize}
+
+On smaller screens, the top bar becomes more compact, but the same controls remain available.
+
+\subsection{Theme toggle}
+
+Users can switch between light and dark appearance at any time. The selected theme is stored in the browser, so it remains active on the same device until changed again.
+
+\subsection{Notifications}
+
+The notifications page collects system updates such as:
+
+\begin{itemize}[leftmargin=1.5em]
+  \item event-related updates
+  \item room invitations or outcomes
+  \item moderation outcomes
+  \item announcement-related updates
+\end{itemize}
+
+Unread notifications are indicated by a badge on the notifications button.
+
+\shot{screenshots/notifications_desktop.png}
+{Notifications page}
+{Capture the notifications list page on desktop with at least one unread item and one read item if possible.}
+
+\subsection{Search}
+
+The search bar searches across:
+
+\begin{itemize}[leftmargin=1.5em]
+  \item clubs
+  \item events
+  \item open rooms
+\end{itemize}
+
+Use search when the destination is already known and the user wants to jump directly instead of navigating manually.
+
+\section{Events}
+
+\subsection{Browsing upcoming events}
+
+The \textbf{Events} page is the main discovery view for upcoming activities. Users can:
+
+\begin{itemize}[leftmargin=1.5em]
+  \item browse published events
+  \item refine the feed using filters
+  \item view personal registration status
+  \item open an event detail page
+  \item jump to the event discussion channel when available
+\end{itemize}
+
+\shot{screenshots/event_feed_desktop.png}
+{Upcoming events page}
+{Capture the events feed on desktop with filters visible, one or more event cards, and the My registrations panel.}
+
+\subsection{Opening an event}
+
+The event detail page shows:
+
+\begin{itemize}[leftmargin=1.5em]
+  \item event title
+  \item organizing club
+  \item about/description
+  \item venue
+  \item schedule
+  \item registration summary
+  \item announcements
+  \item personal registration status
+\end{itemize}
+
+Announcements are intentionally compact in the main page. Users click an announcement title to open the full announcement body in a dialog instead of expanding long text directly in the page.
+
+\shot{screenshots/event_detail_desktop.png}
+{Event detail page}
+{Capture the event detail page on desktop with the event metadata blocks, personal status, and at least one announcement title visible.}
+
+\subsection{Registering for an event}
+
+To register:
+
+\begin{enumerate}[leftmargin=1.8em]
+  \item open the event detail page
+  \item click \textbf{Register}
+  \item wait for the page to refresh
+  \item confirm the updated registration status
+\end{enumerate}
+
+If the event reaches capacity, the system may place the user on a waitlist depending on the event state. If a confirmed participant cancels, the system may promote users from the waitlist automatically.
+
+\subsection{Canceling a registration}
+
+Users can cancel their own registration from the event detail page. The page then updates the personal status block accordingly.
+
+\subsection{Attendance and analytics}
+
+Attendance management and analytics are role-restricted features. Normal students mainly interact with:
+
+\begin{itemize}[leftmargin=1.5em]
+  \item registration state
+  \item cancellation
+  \item announcements
+  \item discussion link
+\end{itemize}
+
+\section{Clubs and Club Channels}
+
+\subsection{Browsing clubs}
+
+The \textbf{Clubs} page shows available clubs and supports search by name or category. Users can open a club page from the list.
+
+\shot{screenshots/club_list_desktop.png}
+{Club list page}
+{Capture the clubs page on desktop with the search bar and at least one club card visible.}
+
+\subsection{Joining and leaving a club}
+
+From a club page, users can join or leave depending on their current membership state.
+
+Important current behavior:
+
+\begin{itemize}[leftmargin=1.5em]
+  \item normal members can leave a club voluntarily
+  \item if a coordinator removes a user from a club, the user cannot rejoin independently
+  \item removed members must be restored by a coordinator or administrator
+\end{itemize}
+
+\subsection{Club channel workspace}
+
+The club page uses a chat-style workspace:
+
+\begin{itemize}[leftmargin=1.5em]
+  \item the main area shows the active channel
+  \item newer messages are presented at the bottom of the conversation, and the workspace opens at the latest messages
+  \item older messages are reached by scrolling upward inside the chat area
+  \item the right panel shows channels and member information
+\end{itemize}
+
+On mobile, the right panel becomes a collapsible \textbf{Info} drawer so the user does not need to scroll below the message composer.
+
+\shot{screenshots/club_chat_desktop.png}
+{Club channel workspace on desktop}
+{Capture a club channel page on desktop with messages visible, the composer visible, and the right panel showing channels and members.}
+
+\shot{screenshots/club_chat_mobile_drawer.png}
+{Club channel workspace on mobile}
+{Capture the mobile club channel page with the Info drawer open so both channel and member information are visible.}
+
+\subsection{Member information}
+
+The club member list is intentionally compact:
+
+\begin{itemize}[leftmargin=1.5em]
+  \item the list shows names and role indicators
+  \item detailed information opens in a dialog when the user taps a member entry
+  \item the dialog can include a shortcut to start a direct message
+\end{itemize}
+
+\subsection{Coordinator and secretary actions}
+
+Depending on role, club managers can:
+
+\begin{itemize}[leftmargin=1.5em]
+  \item create and manage channels
+  \item assign or revoke secretary status
+  \item remove members
+  \item restore removed members
+  \item create club-scoped events
+\end{itemize}
+
+These actions are typically accessed through action menus rather than being permanently visible on the page.
+
+\section{Open Rooms}
+
+\subsection{Purpose of open rooms}
+
+Open rooms provide handle-based discussion spaces separate from club channels and direct messages. Users participate through room handles rather than directly through their real names.
+
+\subsection{Joining a room}
+
+Users open the \textbf{Open rooms} page, pick a room, and join according to the room's access rules. Depending on the room configuration, entry may involve:
+
+\begin{itemize}[leftmargin=1.5em]
+  \item immediate access
+  \item handle approval
+  \item invitation-based access
+\end{itemize}
+
+\shot{screenshots/open_rooms_desktop.png}
+{Open rooms list page}
+{Capture the open rooms listing page on desktop with multiple rooms or room cards if available.}
+
+\subsection{Room chat workspace}
+
+The room detail page mirrors the chat-focused layout used elsewhere:
+
+\begin{itemize}[leftmargin=1.5em]
+  \item contained message stream
+  \item sticky message composer
+  \item right-side information panel on desktop
+  \item collapsible \textbf{Info} drawer on mobile
+\end{itemize}
+
+\shot{screenshots/open_room_desktop.png}
+{Open room chat on desktop}
+{Capture a room detail page on desktop with the message stream, composer, and members/settings panel visible.}
+
+\shot{screenshots/open_room_mobile_drawer.png}
+{Open room chat on mobile}
+{Capture a room detail page on mobile with the Info drawer open.}
+
+\subsection{Editing and deleting messages}
+
+Users can edit their own room messages for a short time after posting. Users can also delete their own room messages, while room managers and administrators may have stronger moderation controls.
+
+\subsection{Room creator moderation}
+
+The room creator can manage certain room-specific actions. In the current implementation, the room creator can use a combined \textbf{reveal and expel} action for a participant when appropriate. This action is room-specific and is not available to all participants.
+
+\subsection{Archived rooms}
+
+Archived rooms are read-only. Users can still view earlier conversation history, but the message composer is no longer available for sending new messages.
+
+\section{Direct Messages}
+
+\subsection{Opening the inbox}
+
+The \textbf{Inbox} page is the direct-message interface. It supports:
+
+\begin{itemize}[leftmargin=1.5em]
+  \item conversation list
+  \item active thread workspace
+  \item new chat search
+  \item block or unblock actions for a thread
+\end{itemize}
+
+The inbox was redesigned to behave like a modern chat workspace:
+
+\begin{itemize}[leftmargin=1.5em]
+  \item the thread opens at the latest messages
+  \item older messages are reached by scrolling upward inside the thread
+  \item the conversation list stays accessible
+  \item on mobile, the thread occupies most of the screen
+\end{itemize}
+
+\shot{screenshots/inbox_desktop.png}
+{Desktop direct-message inbox}
+{Capture the inbox on desktop with the conversation list on the left and an active thread on the right.}
+
+\shot{screenshots/inbox_mobile.png}
+{Mobile direct-message inbox}
+{Capture the inbox thread view on mobile with the sticky composer visible and the latest messages loaded.}
+
+\subsection{Starting a new direct message}
+
+To start a new chat:
+
+\begin{enumerate}[leftmargin=1.8em]
+  \item open the inbox
+  \item click or tap \textbf{New chat}
+  \item search for a user by name, username, or email
+  \item select the user to create or open the thread
+\end{enumerate}
+
+\subsection{Blocking a thread}
+
+The thread action menu provides block or unblock functionality. When a thread is blocked, sending behavior changes according to the blocking state.
+
+\section{My Activity / Profile}
+
+\subsection{Purpose}
+
+The profile page summarizes the user's account and participation in the system. It currently includes:
+
+\begin{itemize}[leftmargin=1.5em]
+  \item display name, username, email, and global role
+  \item club memberships
+  \item event registrations
+  \item open-room handles
+\end{itemize}
+
+\shot{screenshots/profile_desktop.png}
+{Profile page}
+{Capture the profile page showing account details, club memberships, event registrations, and room handles.}
+
+\section{Administrator Panel}
+
+\subsection{Purpose}
+
+ClubsHub also includes the standard Django administrator panel at:
+
+\begin{center}
+  \texttt{/admin/}
+\end{center}
+
+This interface is intended for desktop use. It is useful for administrative maintenance, data inspection, and support actions that are broader than the normal user interface.
+
+\subsection{What is available in the admin panel}
+
+The current admin surface exposes the active operational models used by the project, including:
+
+\begin{itemize}[leftmargin=1.5em]
+  \item users and OTP login challenges
+  \item clubs, memberships, events, registrations, announcements, channels, channel members, and channel messages
+  \item rooms, room handles, invites, room messages, and reports
+  \item notifications and audit logs
+  \item direct-message threads, participants, messages, and block relationships
+\end{itemize}
+
+Stale or confusing legacy items are intentionally hidden. In particular:
+
+\begin{itemize}[leftmargin=1.5em]
+  \item the legacy \texttt{ClubFollow} model is not exposed in admin
+  \item Django auth \texttt{Groups} are not used by the project permission model and are hidden from admin
+\end{itemize}
+
+\subsection{Recommended admin uses}
+
+The admin panel is best used for:
+
+\begin{itemize}[leftmargin=1.5em]
+  \item inspecting account and membership records
+  \item checking event registrations and announcements
+  \item reviewing room reports, handles, invites, and archived state
+  \item auditing notifications, direct messages, and moderation history
+  \item data correction when a support issue cannot be resolved from the normal UI
+\end{itemize}
+
+Audit-style records are intended mainly for inspection rather than day-to-day editing.
+
+\shot{screenshots/admin_index_desktop.png}
+{Desktop administrator panel}
+{Capture the Django admin index page on desktop after logging in as an administrator. Show the visible model groups and confirm that legacy ClubFollow and auth Groups are not present.}
+
+\section{Mobile and Installable App Use}
+
+\subsection{Responsive behavior}
+
+ClubsHub supports both desktop and mobile use. In mobile mode:
+
+\begin{itemize}[leftmargin=1.5em]
+  \item the left navigation becomes a drawer
+  \item chat surfaces prioritize the message stream
+  \item club and room side information moves into collapsible \textbf{Info} drawers
+  \item the message composer remains easy to reach while typing
+\end{itemize}
+
+\subsection{Installable app behavior}
+
+Supported browsers may offer an \textbf{Install app} prompt. When installed, ClubsHub behaves like a home-screen web app rather than a native Android or iOS application.
+
+\shot{screenshots/install_prompt_mobile.png}
+{Optional install prompt or installed mobile view}
+{Capture either the mobile Install app prompt or the app running from the home screen after installation. This screenshot is optional but useful for the final manual.}
+
+\subsection{Notifications on mobile}
+
+In-page notifications work through normal page activity. Browser-level notification behavior depends on the browser, permissions, and whether the site is running in a supported secure context.
+
+\section{Troubleshooting}
+
+\subsection{I did not receive a verification email}
+
+\begin{itemize}[leftmargin=1.5em]
+  \item confirm that the signup used an \texttt{@iitk.ac.in} address
+  \item check spam or junk folders
+  \item use the resend-verification page if the account is eligible
+\end{itemize}
+
+\subsection{I cannot log in even though I created an account}
+
+Make sure the email verification link was completed successfully. Unverified accounts cannot complete normal password login.
+
+\subsection{I was removed from a club}
+
+Removed members cannot currently rejoin by themselves. A club coordinator or administrator must restore the membership.
+
+\subsection{I cannot send a message in a room}
+
+Possible reasons include:
+
+\begin{itemize}[leftmargin=1.5em]
+  \item the room is archived and read-only
+  \item the user no longer has an active room handle
+  \item the user was expelled from the room
+\end{itemize}
+
+\subsection{The mobile page still shows an older layout}
+
+If the interface looks outdated after deployment:
+
+\begin{itemize}[leftmargin=1.5em]
+  \item refresh the page more than once
+  \item clear the browser's site data
+  \item if installed as a web app, close and reopen it after clearing cached data
+\end{itemize}
+
+\section{Screenshot Capture Checklist}
+
+This table lists suggested filenames and the intended screenshot for each file. You can upload the images to Overleaf using the same names, or rename both the files and the references together.
+
+\renewcommand{\arraystretch}{1.2}
+\begin{longtable}{>{\raggedright\arraybackslash}p{0.27\textwidth} >{\raggedright\arraybackslash}p{0.25\textwidth} >{\raggedright\arraybackslash}p{0.39\textwidth}}
+\toprule
+\textbf{Filename} & \textbf{Page / State} & \textbf{What to capture} \\
+\midrule
+\endhead
+
+\texttt{screenshots/login\_desktop.png} & Login page (desktop) & Main login page with password form, OTP entry point, and theme toggle. \\
+\texttt{screenshots/login\_otp\_mobile.png} & OTP verification (mobile) & OTP login page after a code request. \\
+\texttt{screenshots/signup\_pending.png} & Signup pending & Verification pending page after account creation. \\
+\texttt{screenshots/event\_feed\_desktop.png} & Events feed & Upcoming events page with filters and registration summary. \\
+\texttt{screenshots/event\_detail\_desktop.png} & Event detail & Event metadata, status block, and compact announcements list. \\
+\texttt{screenshots/club\_list\_desktop.png} & Clubs list & Club discovery page with search and at least one club card. \\
+\texttt{screenshots/club\_chat\_desktop.png} & Club channel workspace & Desktop club chat with active channel and right-side info panel. \\
+\texttt{screenshots/club\_chat\_mobile\_drawer.png} & Club channel workspace (mobile) & Mobile club chat with Info drawer open. \\
+\texttt{screenshots/open\_rooms\_desktop.png} & Open rooms list & Open rooms overview page. \\
+\texttt{screenshots/open\_room\_desktop.png} & Open room detail (desktop) & Room chat with members/settings panel visible. \\
+\texttt{screenshots/open\_room\_mobile\_drawer.png} & Open room detail (mobile) & Mobile room chat with Info drawer open. \\
+\texttt{screenshots/inbox\_desktop.png} & Inbox (desktop) & Conversation list and active thread together. \\
+\texttt{screenshots/inbox\_mobile.png} & Inbox (mobile) & Active DM thread with sticky composer and current messages. \\
+\texttt{screenshots/notifications\_desktop.png} & Notifications page & Notifications list with realistic entries. \\
+\texttt{screenshots/profile\_desktop.png} & Profile page & Account details, memberships, event registrations, and room handles. \\
+\texttt{screenshots/admin\_index\_desktop.png} & Admin dashboard & Django admin index page on desktop with the active ClubsHub models visible. \\
+\texttt{screenshots/install\_prompt\_mobile.png} & PWA install view & Install app prompt or installed app running from the home screen. \\
+\bottomrule
+\end{longtable}
+
+\section{Optional Extra Screenshots}
+
+If you want a more polished final manual, add one or more of these optional captures:
+
+\begin{itemize}[leftmargin=1.5em]
+  \item club member dialog with direct-message shortcut
+  \item removed-members restore dialog for coordinators
+  \item event announcement modal opened from the announcement title
+  \item room creator's reveal-and-expel action in the room member settings area
+  \item mobile notifications page
+\end{itemize}
+
+\end{document}
