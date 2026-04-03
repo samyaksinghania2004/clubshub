@@ -142,7 +142,7 @@ def _room_access_state(room, user):
     manager_access = can_manage_room(user, room)
     can_review_reports = can_view_reports(user)
     handle = RoomHandle.objects.filter(room=room, user=user).first()
-    read_only_mode = False
+    read_only_mode = room.is_archived
     if not handle:
         if manager_access or can_review_reports:
             read_only_mode = True
@@ -285,28 +285,23 @@ def leave_room_view(request, pk):
 @login_required
 def room_detail_view(request, pk):
     room = get_object_or_404(DiscussionRoom.objects.select_related("club", "event", "event__club"), pk=pk)
-    can_review_reports = can_view_reports(request.user)
-    manager_access = can_manage_room(request.user, room)
-    handle = RoomHandle.objects.filter(room=room, user=request.user).first()
-    read_only_mode = False
-
-    if not handle:
-        if manager_access or can_review_reports:
-            read_only_mode = True
-        else:
-            return redirect("rooms:join_room", pk=room.pk)
-    elif handle.status == RoomHandle.Status.PENDING:
-        if manager_access or can_review_reports:
-            read_only_mode = True
-        else:
+    handle, can_view, manager_access, can_review_reports, read_only_mode = _room_access_state(
+        room, request.user
+    )
+    if not can_view:
+        if handle and handle.status == RoomHandle.Status.PENDING:
             return render(request, "rooms/room_pending.html", {"room": room, "handle": handle})
-    elif handle.status == RoomHandle.Status.EXPELLED:
-        return redirect("rooms:room_list")
-    elif handle.status == RoomHandle.Status.LEFT:
+        if handle and handle.status == RoomHandle.Status.EXPELLED:
+            return redirect("rooms:room_list")
+        if handle and handle.status == RoomHandle.Status.LEFT:
+            return redirect("rooms:join_room", pk=room.pk)
         return redirect("rooms:join_room", pk=room.pk)
 
     form = MessageForm(request.POST or None)
     if request.method == "POST":
+        if room.is_archived:
+            messages.error(request, "This room is archived. Messages are read-only.")
+            return redirect("rooms:room_detail", pk=room.pk)
         if read_only_mode or not handle or not handle.can_post:
             messages.error(request, "You cannot post in this room right now.")
             return redirect("rooms:room_detail", pk=room.pk)
@@ -357,7 +352,6 @@ def room_messages_view(request, pk):
     room = get_object_or_404(
         DiscussionRoom.objects.select_related("club", "event", "event__club"),
         pk=pk,
-        is_archived=False,
     )
     handle, can_view, manager_access, can_review_reports, _ = _room_access_state(
         room, request.user
@@ -386,11 +380,12 @@ def room_send_view(request, pk):
     room = get_object_or_404(
         DiscussionRoom.objects.select_related("club", "event", "event__club"),
         pk=pk,
-        is_archived=False,
     )
     handle, can_view, manager_access, can_review_reports, read_only_mode = _room_access_state(
         room, request.user
     )
+    if room.is_archived:
+        return JsonResponse({"error": "This room is archived."}, status=403)
     if not can_view or read_only_mode or not handle or not handle.can_post:
         return JsonResponse({"error": "not_allowed"}, status=403)
     form = MessageForm(request.POST)

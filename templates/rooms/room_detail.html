@@ -10,18 +10,24 @@
 <div class="room-layout" data-chat-workspace>
     <section
         class="surface-card room-stream-card"
-        data-live-chat="room"
-        data-messages-url="{% url 'rooms:room_messages' room.pk %}"
-        data-send-url="{% url 'rooms:room_send' room.pk %}"
-        data-chat-last="{% if last_message_at %}{{ last_message_at|date:'c' }}{% endif %}"
-        data-show-identities="{% if show_real_identities %}true{% else %}false{% endif %}"
+        {% if not room.is_archived %}
+            data-live-chat="room"
+            data-messages-url="{% url 'rooms:room_messages' room.pk %}"
+            data-send-url="{% url 'rooms:room_send' room.pk %}"
+            data-chat-last="{% if last_message_at %}{{ last_message_at|date:'c' }}{% endif %}"
+            data-show-identities="{% if show_real_identities %}true{% else %}false{% endif %}"
+        {% endif %}
     >
         <div class="room-chat-header">
             <div>
                 <p class="eyebrow">{{ room.get_room_type_display }} - {{ room.get_access_type_display }}</p>
                 <h2>{{ room.name }}</h2>
             </div>
-            {% if read_only_mode %}
+            {% if room.is_archived %}
+                <div class="club-chat-cta">
+                    <p class="muted-text">Archived room. Messages are read-only.</p>
+                </div>
+            {% elif read_only_mode %}
                 <div class="club-chat-cta">
                     <p class="muted-text">Moderator preview mode.</p>
                 </div>
@@ -70,7 +76,11 @@
             {% endfor %}
         </div>
 
-        {% if not read_only_mode %}
+        {% if room.is_archived %}
+            <div class="flash-card flash-info">
+                This room is archived. Messages are read-only.
+            </div>
+        {% elif not read_only_mode %}
             <div class="composer-card composer-card--sticky">
                 {% if handle and handle.is_muted %}
                     <div class="flash-card flash-warning">You are muted in this room and cannot post new messages.</div>
@@ -120,6 +130,9 @@
                     <p class="room-panel-summary__copy muted-text">{{ room.description }}</p>
                 {% endif %}
                 <div class="room-panel-summary__meta">
+                    {% if room.is_archived %}
+                        <span class="tag is-dark is-light">Archived</span>
+                    {% endif %}
                     <span class="tag is-dark is-light">{{ room.get_access_type_display }}</span>
                     {% if handle and handle.status == 'approved' %}
                         <span class="tag is-link is-light">Handle: {{ handle.handle_name }}</span>

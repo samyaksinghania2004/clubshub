@@ -225,3 +225,56 @@ class RoomsIntegrationTests(TestCase):
         self.assertNotContains(response, "page-hero room-hero")
         self.assertNotContains(response, "View members")
         self.assertNotContains(response, 'id="room-members-modal"')
+
+    def test_archived_room_detail_is_read_only_and_hides_composer(self):
+        room = DiscussionRoom.objects.create(
+            name="Archived Commons",
+            description="A public topic room.",
+            room_type=DiscussionRoom.RoomType.TOPIC,
+            access_type=DiscussionRoom.AccessType.PUBLIC,
+            created_by=self.coordinator,
+            is_archived=True,
+        )
+        RoomHandle.objects.create(
+            room=room,
+            user=self.student,
+            handle_name="StudentHandle",
+            status=RoomHandle.Status.APPROVED,
+            approved_at=timezone.now(),
+        )
+
+        self.client.force_login(self.student)
+        response = self.client.get(reverse("rooms:room_detail", args=[room.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Archived room. Messages are read-only.")
+        self.assertContains(response, "Archived")
+        self.assertNotContains(response, 'data-live-chat="room"')
+        self.assertNotContains(response, "Share an update, ask a question, or start the discussion...")
+
+    def test_archived_room_send_returns_json_error_instead_of_404(self):
+        room = DiscussionRoom.objects.create(
+            name="Archived Commons",
+            description="A public topic room.",
+            room_type=DiscussionRoom.RoomType.TOPIC,
+            access_type=DiscussionRoom.AccessType.PUBLIC,
+            created_by=self.coordinator,
+            is_archived=True,
+        )
+        RoomHandle.objects.create(
+            room=room,
+            user=self.student,
+            handle_name="StudentHandle",
+            status=RoomHandle.Status.APPROVED,
+            approved_at=timezone.now(),
+        )
+
+        self.client.force_login(self.student)
+        response = self.client.post(
+            reverse("rooms:room_send", args=[room.pk]),
+            data={"text": "Should fail"},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.json()["error"], "This room is archived.")
