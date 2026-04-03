@@ -75,14 +75,12 @@
         {% if request.user.is_authenticated %}
         <aside class="app-sidebar" id="app-sidebar" data-app-sidebar aria-hidden="false">
             <div class="sidebar-group">
-                <p class="sidebar-label">Explore</p>
                 <a class="sidebar-link" href="{% url 'clubs_events:event_feed' %}">Events</a>
                 <a class="sidebar-link" href="{% url 'clubs_events:club_list' %}">Clubs</a>
                 <a class="sidebar-link" href="{% url 'rooms:room_list' %}">Open rooms</a>
                 <a class="sidebar-link" href="{% url 'clubs_events:my_events' %}">My activity</a>
             </div>
             <div class="sidebar-group">
-                <p class="sidebar-label">Workspace</p>
                 <a
                     class="sidebar-link{% if request.resolver_match.namespace == 'core' %}{% if request.resolver_match.url_name == 'inbox' or request.resolver_match.url_name == 'inbox_thread' %} is-active{% endif %}{% endif %}"
                     href="{% url 'core:inbox' %}"

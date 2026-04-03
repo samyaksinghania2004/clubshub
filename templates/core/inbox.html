@@ -46,18 +46,9 @@
                     </div>
                     <div class="dm-chat-title">
                         <h1>{{ other_user.display_name|default:"Unknown user" }}</h1>
-                        <p class="muted-text">Direct message</p>
                     </div>
                 </div>
                 <div class="dm-chat-actions">
-                    <button
-                        type="button"
-                        class="button is-dark is-outlined dm-chat-actions__new"
-                        data-modal-target="dm-start-modal"
-                        data-modal-focus="id_identifier"
-                    >
-                        New chat
-                    </button>
                     {% if other_user %}
                         <details class="action-menu">
                             <summary class="action-menu__toggle button is-dark is-outlined" aria-label="Chat options">
